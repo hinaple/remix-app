@@ -1,0 +1,18 @@
+:root {
+  color: #ffffff;
+  background: #000000;
+  font-family: system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+}
+
+.remix-template {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  background: #000000;
+  font-family: system-ui, sans-serif;
+}

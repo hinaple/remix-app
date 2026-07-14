@@ -1,0 +1,25 @@
+:root {
+  color: #fdfeff;
+  background: #121314;
+  font-family:
+    Inter, ui-sans-serif, system-ui, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.host-shell {
+  min-height: 100vh;
+
+  & > section {
+    min-height: 100vh;
+    &[hidden] {
+      display: none;
+    }
+  }
+}

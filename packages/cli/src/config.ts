@@ -18,13 +18,14 @@ export interface LoadedRemixConfig {
   configFile: string;
 }
 
-export async function loadRemixConfig(cwd: string): Promise<LoadedRemixConfig> {
-  const configFile = await findConfigFile(cwd);
-  const env: ConfigEnv = {
+export async function loadRemixConfig(
+  cwd: string,
+  env: ConfigEnv = {
     command: "build",
     mode: "production",
-  };
-
+  },
+): Promise<LoadedRemixConfig> {
+  const configFile = await findConfigFile(cwd);
   const loaded = await loadConfigFromFile(env, configFile, cwd);
 
   if (!loaded) {
@@ -88,6 +89,60 @@ function validateRemixConfig(value: unknown, cwd: string): RemixConfig {
 
   if (value.kiosk !== undefined && typeof value.kiosk !== "boolean") {
     fail('remix config field "kiosk" must be a boolean');
+  }
+
+  if (value.screen !== undefined) {
+    if (!isRecord(value.screen)) {
+      fail('remix config field "screen" must be an object');
+    }
+
+    if (
+      value.screen.autoBrightness !== undefined &&
+      typeof value.screen.autoBrightness !== "boolean"
+    ) {
+      fail('remix config field "screen.autoBrightness" must be a boolean');
+    }
+
+    if (value.screen.keyboard !== undefined) {
+      if (!isRecord(value.screen.keyboard)) {
+        fail('remix config field "screen.keyboard" must be an object');
+      }
+
+      if (
+        value.screen.keyboard.adjust !== undefined &&
+        (typeof value.screen.keyboard.adjust !== "string" ||
+          !["resize", "pan", "nothing"].includes(value.screen.keyboard.adjust))
+      ) {
+        fail(
+          'remix config field "screen.keyboard.adjust" must be one of: resize, pan, nothing',
+        );
+      }
+
+      if (
+        value.screen.keyboard.nativeAdjust !== undefined &&
+        typeof value.screen.keyboard.nativeAdjust !== "boolean"
+      ) {
+        fail(
+          'remix config field "screen.keyboard.nativeAdjust" must be a boolean',
+        );
+      }
+
+      if (
+        value.screen.keyboard.state !== undefined &&
+        (typeof value.screen.keyboard.state !== "string" ||
+          ![
+            "unspecified",
+            "hidden",
+            "alwaysHidden",
+            "visible",
+            "alwaysVisible",
+          ].includes(value.screen.keyboard.state))
+      ) {
+        fail(
+          'remix config field "screen.keyboard.state" must be one of: unspecified, hidden, alwaysHidden, visible, alwaysVisible',
+        );
+      }
+    }
   }
 
   const config = value as unknown as RemixConfig;

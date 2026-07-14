@@ -25,7 +25,7 @@ export function packageFileName(name: string, version: string): string {
 }
 
 export function unpackedPackageDirName(name: string, version: string): string {
-  return `${sanitizePackagePart(name)}-${sanitizePackagePart(version)}`;
+  return `${sanitizePackagePart(name)}-${sanitizePackagePart(version)}-unpacked`;
 }
 
 function sanitizePackagePart(value: string): string {

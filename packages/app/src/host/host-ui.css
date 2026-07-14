@@ -1,0 +1,82 @@
+[data-host-admin] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+  overflow-y: auto;
+
+  hr {
+    width: 100%;
+  }
+
+  .buttons {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+  }
+  button {
+    border: 0;
+    border-radius: 5px;
+    background: #fdfeff;
+    color: #121314;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 700;
+    padding: 6px 10px;
+
+    &:disabled {
+      opacity: 0.6;
+    }
+  }
+  button[data-exit-app] {
+    background-color: #f62e2e;
+  }
+
+  h1,
+  p {
+    margin: 0;
+  }
+
+  .status {
+    display: grid;
+    grid-template-columns: repeat(2, auto);
+    justify-content: center;
+    gap: 5px 10px;
+
+    & > div {
+      line-break: anywhere;
+      text-align: right;
+
+      &:nth-of-type(odd) {
+        font-weight: 900;
+      }
+      &:nth-of-type(even) {
+        white-space: pre-wrap;
+        text-align: left;
+      }
+    }
+  }
+
+  details {
+    width: 100%;
+    border: 1px solid #fdfeff;
+    border-radius: 5px;
+    padding: 5px 8px;
+
+    summary {
+      text-align: left;
+      font-weight: 700;
+    }
+
+    &[open] {
+      summary {
+        margin-bottom: 10px;
+      }
+    }
+  }
+}

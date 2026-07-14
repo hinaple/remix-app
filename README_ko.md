@@ -55,6 +55,7 @@ remixApp 프로젝트는 Android APK가 아니며 standalone web app도 아닙�
 - Host APK 패키지: `@remixapp/app`
 - native/core 패키지: `@remixapp/core`
 - template 패키지: `@remixapp/template`
+- Android application ID: `com.fainthit.remix`
 - source config 파일: `remix.config.ts` 또는 `remix.config.js`
 - built project manifest: `project.json`
 - 프로젝트 패키지 확장자: `.remixprj`
@@ -88,7 +89,7 @@ README_ko.md
 
 ### @remixapp/app
 
-`@remixapp/app`은 Capacitor + Svelte 5 기반 Android APK Host입니다.
+`@remixapp/app`은 Capacitor + vanilla TypeScript/JavaScript 기반 Android APK Host입니다.
 
 책임:
 
@@ -104,6 +105,11 @@ README_ko.md
 - `RemixAppContext`를 생성합니다.
 - `mount(container, context)`를 호출합니다.
 - optional unmount cleanup을 저장합니다.
+- `context.project.reset()`을 통해 Host APK를 재시작하지 않고 현재 프로젝트만 재시작합니다.
+
+Android application ID는 `com.fainthit.remix`입니다. 전용 기기는 Android QR 코드 provisioning을 통해 Device Owner로 설정합니다. Device Owner policy와 kiosk 구현은 프로젝트 코드가 아니라 Host/Core native layer의 책임입니다.
+
+Device Owner admin component는 `com.fainthit.remix/.RemixDeviceAdminReceiver`입니다. Host는 QR provisioning에 필요한 Android 12 이상의 provisioning mode 및 policy compliance activity도 제공합니다. 실제 배포용 QR payload를 만들려면 최종 서명 APK의 download URL과 signing certificate checksum이 추가로 필요합니다.
 
 `@remixapp/app`은 remixApp 프로젝트 코드가 직접 import하는 패키지가 아닙니다.
 
@@ -116,11 +122,14 @@ README_ko.md
 - Android device policy.
 - kiosk, fullscreen, immersive mode.
 - screen keep-on.
+- 자동 밝기와 화면 밝기 제어.
 - wake lock과 CPU wake 동작.
 - hardware key capture.
 - back key capture.
 - audio, video, device-specific native 기능.
 - 기타 현장 기기 제어 기능.
+
+초기 Android bridge는 screen wake, screen keep-on, 자동 밝기 제어, 화면 밝기 제어, CPU wake lock, lock-task kiosk 제어, Device Owner 상태, Android back capture, 지원 hardware key event를 제공합니다. Host는 프로젝트 mount 전에 manifest의 fixed policy를 적용하고 unmount/reset 시 프로젝트가 사용한 runtime policy를 해제합니다.
 
 프로젝트 개발자는 `@remixapp/core`를 직접 import하지 않습니다. Host APK가 내부적으로 사용하고, 필요한 기능은 `RemixAppContext`를 통해 노출합니다.
 
@@ -134,6 +143,7 @@ README_ko.md
 - `RemixAppMount`, `RemixAppUnmount` 타입.
 - source config와 built manifest 타입.
 - device, event, resource, project, key 타입.
+- `context.project.reset()`을 통한 프로젝트 단위 재시작.
 - Host/project ABI와 type contract.
 
 SDK는 가볍게 유지해야 합니다. Capacitor 구현, native bridge, 무거운 runtime dependency를 포함하지 않아야 합니다.
@@ -167,11 +177,10 @@ CLI는 config 없음, invalid config, entry 없음, configured style 없음, Vit
 - `package.json`
 - `remix.config.ts` 또는 `remix.config.js`
 - `src/index.ts`
-- `src/App.svelte`
 - `src/style.css`
 - `resources/`
 
-template은 `remix-cli build`로 빌드 가능한 최소 Svelte 5 remixApp 프로젝트여야 합니다.
+template은 `remix-cli build`로 빌드 가능한 최소 vanilla TypeScript/JavaScript remixApp 프로젝트입니다.
 
 ## Source Project 형태
 
@@ -203,30 +212,31 @@ airport/
 source config 예시:
 
 ```ts
-import { defineConfig } from '@remixapp/sdk/config'
+import { defineConfig } from "@remixapp/sdk/config";
 
 export default defineConfig({
-  name: 'airport',
-  version: '1.0.0',
-  entry: 'src/index.ts',
-  styles: ['src/style.css'],
+  name: "airport",
+  version: "1.0.0",
+  entry: "src/index.ts",
+  styles: ["src/style.css"],
   kiosk: true,
   runtime: {
     foreground: true,
-    keepCpuAwake: true
+    keepCpuAwake: true,
   },
   screen: {
     keepOn: false,
-    timeout: 30000
+    autoBrightness: false,
+    timeout: 30000,
   },
   input: {
-    capturedKeys: ['VOLUME_UP', 'VOLUME_DOWN'],
-    captureBack: true
+    capturedKeys: ["VOLUME_UP", "VOLUME_DOWN"],
+    captureBack: true,
   },
   vite: {
-    base: './'
-  }
-})
+    base: "./",
+  },
+});
 ```
 
 source config는 build-time 파일입니다. Vite 설정을 포함한 JavaScript/TypeScript 설정을 담을 수 있습니다. built project package에는 이 파일이 포함되지 않습니다.
@@ -292,6 +302,7 @@ CSS가 없더라도 CLI는 empty `src/style.css`를 생성합니다.
   },
   "screen": {
     "keepOn": false,
+    "autoBrightness": false,
     "timeout": 30000
   },
   "input": {
@@ -338,8 +349,8 @@ Host는 original source entry나 source style list를 알 필요가 없습니다
 프로젝트 코드는 SDK context를 통해 이 파일에 접근합니다.
 
 ```ts
-const video = document.createElement('video')
-video.src = context.resources.url('video/intro.mp4')
+const video = document.createElement("video");
+video.src = context.resources.url("video/intro.mp4");
 ```
 
 `context.resources.url(path)`는 browser/WebView API에서 바로 사용할 수 있는 URL을 반환합니다. 기본적으로 Android filesystem detail은 프로젝트 코드에 노출하지 않아야 합니다.
@@ -349,41 +360,42 @@ video.src = context.resources.url('video/intro.mp4')
 Project entry module은 `mount`를 export합니다.
 
 ```ts
-import type { RemixAppMount } from '@remixapp/sdk'
+import type { RemixAppMount } from "@remixapp/sdk";
 
 export const mount: RemixAppMount = (container, context) => {
-  const button = document.createElement('button')
+  const button = document.createElement("button");
 
-  button.textContent = 'NEXT'
+  button.textContent = "NEXT";
   button.onclick = () => {
-    void context.device.screen.wake()
-  }
+    void context.device.screen.wake();
+    void context.device.screen.setBrightness(0.8);
+  };
 
-  container.append(button)
+  container.append(button);
 
   return () => {
-    button.remove()
-  }
-}
+    button.remove();
+  };
+};
 ```
 
 Svelte 5 예시:
 
 ```ts
-import { mount as mountSvelte, unmount } from 'svelte'
-import App from './App.svelte'
-import type { RemixAppMount } from '@remixapp/sdk'
+import { mount as mountSvelte, unmount } from "svelte";
+import App from "./App.svelte";
+import type { RemixAppMount } from "@remixapp/sdk";
 
 export const mount: RemixAppMount = (container, context) => {
   const app = mountSvelte(App, {
     target: container,
-    props: { context }
-  })
+    props: { context },
+  });
 
   return () => {
-    unmount(app)
-  }
-}
+    unmount(app);
+  };
+};
 ```
 
 ## Host Load Flow
@@ -395,6 +407,7 @@ export const mount: RemixAppMount = (container, context) => {
    - runtime foreground behavior
    - CPU wake behavior
    - screen keep-on
+   - automatic brightness
    - screen timeout
    - captured hardware keys
    - back key capture

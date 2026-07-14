@@ -1,5 +1,26 @@
 {
   "name": "@remixapp/app",
   "version": "0.1.0",
-  "type": "module"
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "cap:add:android": "cap add android",
+    "cap:sync": "cap sync android",
+    "android": "cap open android",
+    "android:build": "cd android && gradlew.bat :app:assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/core": "^8.4.0",
+    "@remixapp/core": "workspace:*",
+    "@remixapp/runtime": "workspace:*",
+    "@remixapp/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^8.4.0",
+    "@capacitor/cli": "^8.4.0",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.0"
+  }
 }

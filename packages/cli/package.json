@@ -4,6 +4,16 @@
   "type": "module",
   "main": "./dist/cli.js",
   "types": "./dist/cli.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/cli.d.ts",
+      "import": "./dist/cli.js"
+    },
+    "./dev-runtime": {
+      "types": "./dist/dev-runtime/index.d.ts",
+      "import": "./dist/dev-runtime/index.js"
+    }
+  },
   "bin": {
     "remix-cli": "./dist/cli.js"
   },
@@ -11,16 +21,18 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsup",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@remixapp/runtime": "workspace:*",
     "@remixapp/sdk": "workspace:*",
     "archiver": "^7.0.1",
     "vite": "^7.0.0"
   },
   "devDependencies": {
     "@types/archiver": "^6.0.3",
-    "@types/node": "^24.0.0"
+    "@types/node": "^24.0.0",
+    "tsup": "^8.5.1"
   }
 }

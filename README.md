@@ -55,6 +55,7 @@ Security hardening, sandboxing, strict isolation, permission minimization, proje
 - Host APK package: `@remixapp/app`
 - Native/core package: `@remixapp/core`
 - Template package: `@remixapp/template`
+- Android application ID: `com.fainthit.remix`
 - Source config file: `remix.config.ts` or `remix.config.js`
 - Built project manifest: `project.json`
 - Project package extension: `.remixprj`
@@ -88,7 +89,7 @@ README_ko.md
 
 ### @remixapp/app
 
-`@remixapp/app` is the Capacitor + Svelte 5 Android APK Host.
+`@remixapp/app` is the Capacitor + vanilla TypeScript/JavaScript Android APK Host.
 
 Responsibilities:
 
@@ -104,6 +105,11 @@ Responsibilities:
 - Create `RemixAppContext`.
 - Call `mount(container, context)`.
 - Store optional unmount cleanup.
+- Restart only the mounted project through `context.project.reset()` without restarting the Host APK.
+
+The Android application ID is `com.fainthit.remix`. Dedicated devices are provisioned as Device Owner through Android QR-code provisioning. Device Owner policy and kiosk implementation belong to the Host/Core native layer, not project code.
+
+The Device Owner admin component is `com.fainthit.remix/.RemixDeviceAdminReceiver`. The Host also provides the Android 12+ provisioning mode and policy compliance activities required for QR provisioning. A deployable QR payload still requires the final signed APK download URL and signing-certificate checksum.
 
 `@remixapp/app` is not a package that remixApp project code imports directly.
 
@@ -116,11 +122,14 @@ Responsibilities include:
 - Android device policy.
 - Kiosk, fullscreen, and immersive mode.
 - Screen keep-on.
+- Automatic brightness and screen brightness control.
 - Wake lock and CPU wake behavior.
 - Hardware key capture.
 - Back key capture.
 - Audio, video, and device-specific native features.
 - Other on-site device control functionality.
+
+The initial Android bridge provides screen wake, screen keep-on, automatic brightness control, screen brightness control, CPU wake lock, lock-task kiosk control, Device Owner status, Android back capture, and supported hardware-key events. The Host applies fixed manifest policy before mounting a project and releases project-owned runtime policy during unmount/reset.
 
 Project developers do not import `@remixapp/core` directly. The Host APK uses it internally and exposes needed capabilities through `RemixAppContext`.
 
@@ -134,6 +143,7 @@ Responsibilities:
 - `RemixAppMount` and `RemixAppUnmount` types.
 - Source config and built manifest types.
 - Device, event, resource, project, and key types.
+- Project-only restart through `context.project.reset()`.
 - Host/project ABI and type contract.
 
 The SDK should stay lightweight. It should not include Capacitor implementation, native bridges, or heavy runtime dependencies.
@@ -167,11 +177,10 @@ It should include:
 - `package.json`
 - `remix.config.ts` or `remix.config.js`
 - `src/index.ts`
-- `src/App.svelte`
 - `src/style.css`
 - `resources/`
 
-The template should be a minimal Svelte 5 remixApp project that can be built by `remix-cli build`.
+The template is a minimal vanilla TypeScript/JavaScript remixApp project that can be built by `remix-cli build`.
 
 ## Source Project Shape
 
@@ -203,30 +212,31 @@ airport/
 Example source config:
 
 ```ts
-import { defineConfig } from '@remixapp/sdk/config'
+import { defineConfig } from "@remixapp/sdk/config";
 
 export default defineConfig({
-  name: 'airport',
-  version: '1.0.0',
-  entry: 'src/index.ts',
-  styles: ['src/style.css'],
+  name: "airport",
+  version: "1.0.0",
+  entry: "src/index.ts",
+  styles: ["src/style.css"],
   kiosk: true,
   runtime: {
     foreground: true,
-    keepCpuAwake: true
+    keepCpuAwake: true,
   },
   screen: {
     keepOn: false,
-    timeout: 30000
+    autoBrightness: false,
+    timeout: 30000,
   },
   input: {
-    capturedKeys: ['VOLUME_UP', 'VOLUME_DOWN'],
-    captureBack: true
+    capturedKeys: ["VOLUME_UP", "VOLUME_DOWN"],
+    captureBack: true,
   },
   vite: {
-    base: './'
-  }
-})
+    base: "./",
+  },
+});
 ```
 
 The source config is a build-time file. It may contain JavaScript/TypeScript configuration, including Vite configuration. The built project package does not include this file.
@@ -292,6 +302,7 @@ Example:
   },
   "screen": {
     "keepOn": false,
+    "autoBrightness": false,
     "timeout": 30000
   },
   "input": {
@@ -338,8 +349,8 @@ Typical resources:
 Project code accesses these files through the SDK context:
 
 ```ts
-const video = document.createElement('video')
-video.src = context.resources.url('video/intro.mp4')
+const video = document.createElement("video");
+video.src = context.resources.url("video/intro.mp4");
 ```
 
 `context.resources.url(path)` returns a URL that can be used directly by browser/WebView APIs. Android filesystem details should not be exposed to project code by default.
@@ -349,41 +360,42 @@ video.src = context.resources.url('video/intro.mp4')
 Project entry modules export `mount`.
 
 ```ts
-import type { RemixAppMount } from '@remixapp/sdk'
+import type { RemixAppMount } from "@remixapp/sdk";
 
 export const mount: RemixAppMount = (container, context) => {
-  const button = document.createElement('button')
+  const button = document.createElement("button");
 
-  button.textContent = 'NEXT'
+  button.textContent = "NEXT";
   button.onclick = () => {
-    void context.device.screen.wake()
-  }
+    void context.device.screen.wake();
+    void context.device.screen.setBrightness(0.8);
+  };
 
-  container.append(button)
+  container.append(button);
 
   return () => {
-    button.remove()
-  }
-}
+    button.remove();
+  };
+};
 ```
 
 Svelte 5 example:
 
 ```ts
-import { mount as mountSvelte, unmount } from 'svelte'
-import App from './App.svelte'
-import type { RemixAppMount } from '@remixapp/sdk'
+import { mount as mountSvelte, unmount } from "svelte";
+import App from "./App.svelte";
+import type { RemixAppMount } from "@remixapp/sdk";
 
 export const mount: RemixAppMount = (container, context) => {
   const app = mountSvelte(App, {
     target: container,
-    props: { context }
-  })
+    props: { context },
+  });
 
   return () => {
-    unmount(app)
-  }
-}
+    unmount(app);
+  };
+};
 ```
 
 ## Host Load Flow
@@ -395,6 +407,7 @@ export const mount: RemixAppMount = (container, context) => {
    - runtime foreground behavior
    - CPU wake behavior
    - screen keep-on
+   - automatic brightness
    - screen timeout
    - captured hardware keys
    - back key capture

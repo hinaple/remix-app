@@ -1,0 +1,149 @@
+:root {
+  color: #f7f7f7;
+  background: #000000;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+button,
+a {
+  font: inherit;
+}
+
+.remix-example {
+  min-height: 100vh;
+  background: #000000;
+  color: #ffffff;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+.example-shell {
+  width: min(100%, 1120px);
+  margin: 0 auto;
+  padding: 28px;
+  display: grid;
+  gap: 20px;
+}
+
+.example-header {
+  display: grid;
+  gap: 6px;
+}
+
+.example-header h1,
+.example-header p,
+.example-panel h2,
+.example-status,
+.example-resource {
+  margin: 0;
+}
+
+.example-header h1 {
+  font-size: 32px;
+  line-height: 1.15;
+}
+
+.example-subtitle,
+.example-resource {
+  color: #b8b8b8;
+}
+
+.example-status {
+  min-height: 28px;
+  font-weight: 700;
+}
+
+.example-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.example-panel {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #333333;
+  border-radius: 8px;
+}
+
+.example-panel h2 {
+  font-size: 17px;
+}
+
+.example-panel-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.example-panel button,
+.example-panel a {
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid #ffffff;
+  border-radius: 6px;
+  color: #ffffff;
+  background: #000000;
+  text-decoration: none;
+}
+
+.example-panel button:disabled {
+  color: #777777;
+  border-color: #555555;
+}
+
+.example-status-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  font-size: 14px;
+}
+
+.example-status-row span {
+  color: #b8b8b8;
+}
+
+.example-status-row strong {
+  overflow-wrap: anywhere;
+}
+
+.example-resource {
+  width: 100%;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+
+@media (max-width: 760px) {
+  .example-shell {
+    padding: 18px;
+  }
+
+  .example-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,3 @@
+This file is copied without Vite bundling.
+
+Use context.resources.url("notes/briefing.txt") to load it at runtime.

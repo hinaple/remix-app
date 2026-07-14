@@ -1,5 +1,39 @@
 {
   "name": "@remixapp/core",
   "version": "0.1.0",
-  "type": "module"
+  "description": "Native device bridge for the remixApp Host",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "android/src/main",
+    "android/build.gradle",
+    "android/proguard-rules.pro",
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "peerDependencies": {
+    "@capacitor/core": ">=8.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/core": "^8.4.0",
+    "typescript": "^5.8.3"
+  },
+  "capacitor": {
+    "android": {
+      "src": "android"
+    }
+  }
 }

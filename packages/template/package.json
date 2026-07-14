@@ -1,5 +1,17 @@
 {
   "name": "@remixapp/template",
   "version": "0.1.0",
-  "type": "module"
+  "type": "module",
+  "scripts": {
+    "dev": "remix-cli dev",
+    "build": "remix-cli build",
+    "build:unpack": "remix-cli build --unpack",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@remixapp/cli": "workspace:*",
+    "@remixapp/sdk": "workspace:*",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.0"
+  }
 }

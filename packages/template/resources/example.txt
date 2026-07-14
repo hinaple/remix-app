@@ -1,0 +1,1 @@
+This file is copied into the built resources directory without bundling.
