@@ -17,9 +17,22 @@ android {
         }
     }
     buildTypes {
+        liveReload {
+            initWith debug
+            matchingFallbacks = ['debug']
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+    def remixLiveReloadSourceDir = project.findProperty('remixLiveReloadSourceDir')
+    if (remixLiveReloadSourceDir != null) {
+        sourceSets {
+            liveReload {
+                assets.srcDir file("${remixLiveReloadSourceDir}/assets")
+                manifest.srcFile file("${remixLiveReloadSourceDir}/AndroidManifest.xml")
+            }
         }
     }
 }

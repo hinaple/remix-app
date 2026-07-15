@@ -17,6 +17,7 @@
     "build:template:unpack": "pnpm --filter @remixapp/template build -- --unpack",
     "cap:sync": "pnpm --filter @remixapp/app cap:sync",
     "android": "pnpm --filter @remixapp/app android",
+    "android:dev": "node scripts/android-dev.mjs",
     "android:build": "pnpm --filter @remixapp/app android:build",
     "android:install": "node scripts/install-android-app.mjs",
     "android:install:all": "node scripts/install-android-app.mjs --all",

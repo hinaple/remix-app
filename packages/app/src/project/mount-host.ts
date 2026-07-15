@@ -21,9 +21,6 @@ export function createProjectMountHost(
     }
 
     [data-remix-project-mount] {
-      width: 100%;
-      height: 100%;
-      min-height: 100%;
     }
   `;
   mountContainer.setAttribute("data-remix-project-mount", "");

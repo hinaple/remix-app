@@ -70,7 +70,9 @@ class CssKeyboardLayout implements HostKeyboardLayout {
       this.hostElement.style.minHeight = `calc(100vh - ${status.height}px)`;
       this.hostElement.style.overflow = "";
       this.hostElement.style.transform = "";
+      this.hostElement.classList.add("inspect");
 
+      console.log("resize");
       getDeepActiveElement(document)?.scrollIntoView({
         behavior: "instant",
         block: "center",
@@ -91,6 +93,10 @@ class CssKeyboardLayout implements HostKeyboardLayout {
     this.hostElement.style.minHeight = "";
     this.hostElement.style.overflow = "";
     this.hostElement.style.transform = "";
+
+    this.hostElement.classList.remove("inspect");
+
+    console.log("reset");
   }
 
   private getPanOffset(keyboardHeight: number): number {
