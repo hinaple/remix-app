@@ -52,9 +52,9 @@ Security hardening, sandboxing, strict isolation, permission minimization, proje
 - npm scope: `@remixapp`
 - SDK package: `@remixapp/sdk`
 - CLI package: `@remixapp/cli`
+- Project creator package: `@remixapp/create`
 - Host APK package: `@remixapp/app`
 - Native/core package: `@remixapp/core`
-- Template package: `@remixapp/template`
 - Android application ID: `com.fainthit.remix`
 - Source config file: `remix.config.ts` or `remix.config.js`
 - Built project manifest: `project.json`
@@ -72,7 +72,8 @@ packages/
 ├─ core/
 ├─ sdk/
 ├─ cli/
-└─ template/
+└─ create-remixapp/
+   └─ template-default/
 ```
 
 Root-level files:
@@ -123,13 +124,13 @@ Responsibilities include:
 - Kiosk, fullscreen, and immersive mode.
 - Screen keep-on.
 - Automatic brightness and screen brightness control.
-- Wake lock and CPU wake behavior.
+- Always-on foreground runtime and CPU wake lock ownership.
 - Hardware key capture.
 - Back key capture.
 - Audio, video, and device-specific native features.
 - Other on-site device control functionality.
 
-The initial Android bridge provides screen wake, screen keep-on, automatic brightness control, screen brightness control, CPU wake lock, lock-task kiosk control, Device Owner status, Android back capture, and supported hardware-key events. The Host applies fixed manifest policy before mounting a project and releases project-owned runtime policy during unmount/reset.
+The initial Android bridge provides screen wake, screen keep-on, automatic brightness control, screen brightness control, an always-on foreground runtime and CPU wake lock, lock-task kiosk control, Device Owner status, Android back capture, and supported hardware-key events. The Host applies fixed manifest policy before mounting a project and releases project-owned screen/input policy during unmount/reset.
 
 Project developers do not import `@remixapp/core` directly. The Host APK uses it internally and exposes needed capabilities through `RemixAppContext`.
 
@@ -168,19 +169,27 @@ Responsibilities:
 
 The CLI must fail clearly for missing config files, invalid config, missing entry, missing configured styles, Vite build failures, missing generated JS entry, resource copy failures, and ZIP package failures.
 
-### @remixapp/template
+### @remixapp/create
 
-`@remixapp/template` is the minimal starter project and build fixture.
+`@remixapp/create` provides the `npm create @remixapp@latest` project generator.
 
-It should include:
+```sh
+npm create @remixapp@latest
+npm create @remixapp@latest -- --name "My Room" --version 0.1.0
+npm create @remixapp@latest -- --name "My Room" --version 0.1.0 --force
+```
 
-- `package.json`
-- `remix.config.ts` or `remix.config.js`
-- `src/index.ts`
-- `src/style.css`
-- `resources/`
+Responsibilities:
 
-The template is a minimal vanilla TypeScript/JavaScript remixApp project that can be built by `remix-cli build`.
+- Prompt for a project name and version when they are not provided as options.
+- Normalize project names to lowercase dash-separated npm package names.
+- Create the project under the normalized name in the current working directory.
+- Copy the bundled `template-default` directory from the installed npm package.
+- Generate project-specific `package.json` and `remix.config.ts` values.
+- Install dependencies with the invoking package manager, defaulting to npm.
+- Require confirmation before writing into an existing directory unless `--force` is used.
+
+The bundled template is a minimal vanilla TypeScript/JavaScript remixApp project that can be built by `remix-cli build`. The generator does not initialize a Git repository.
 
 ## Source Project Shape
 
@@ -220,10 +229,6 @@ export default defineConfig({
   entry: "src/index.ts",
   styles: ["src/style.css"],
   kiosk: true,
-  runtime: {
-    foreground: true,
-    keepCpuAwake: true,
-  },
   screen: {
     keepOn: false,
     autoBrightness: false,
@@ -291,15 +296,17 @@ Example:
 
 ```json
 {
+  "formatVersion": 1,
+  "runtimeApiVersion": 2,
+  "builtWith": {
+    "cli": "0.2.0",
+    "sdk": "0.2.0"
+  },
   "name": "airport",
   "version": "1.0.0",
   "entry": "src/index.js",
   "styles": ["src/style.css"],
   "kiosk": true,
-  "runtime": {
-    "foreground": true,
-    "keepCpuAwake": true
-  },
   "screen": {
     "keepOn": false,
     "autoBrightness": false,
@@ -311,6 +318,8 @@ Example:
   }
 }
 ```
+
+The CLI writes `formatVersion` and `runtimeApiVersion`; projects do not configure them directly. `builtWith` is diagnostic metadata rather than the primary compatibility check. Packages created before these fields existed are treated as project format 1 and runtime API 1. Host 0.2 requires runtime API 2, so rebuild older projects before installing them.
 
 The Host does not need to know the original source entry or source style list. It always loads the normalized built files.
 
@@ -354,6 +363,84 @@ video.src = context.resources.url("video/intro.mp4");
 ```
 
 `context.resources.url(path)` returns a URL that can be used directly by browser/WebView APIs. Android filesystem details should not be exposed to project code by default.
+
+## MQTT
+
+MQTT connections and fixed subscriptions are declared only in `remix.config.ts`:
+
+```ts
+export default defineConfig({
+  // ...
+  mqtt: {
+    connections: {
+      primary: {
+        url: "mqtts://broker.example.com:8883",
+        username: "device-user",
+        password: "device-password",
+        subscriptions: [
+          { filter: "devices/+/commands", qos: 1 },
+        ],
+      },
+    },
+  },
+});
+```
+
+The CLI writes a normalized MQTT section to `project.json`. Credentials are stored directly in that package manifest, so they are configuration values rather than protected secrets. The Android foreground service owns each connection and keeps it independent from the WebView lifecycle. Project code can inspect status and publish, but cannot connect, disconnect, or change subscriptions at runtime.
+
+```ts
+const offStatus = context.events.on("mqtt:status", (status) => {
+  console.log(status.connection, status.state);
+});
+
+const offMessage = context.events.on("mqtt:message", (message) => {
+  console.log(message.connection, message.topic, message.payload);
+});
+
+await context.mqtt.publish("primary", "devices/kiosk-1/state", "ready", {
+  qos: 1,
+  retain: true,
+});
+```
+
+`keepAliveSeconds`, `cleanSession`, `reconnect`, and subscription `qos` default to `30`, `true`, `true`, and `0`. When `clientId` is omitted, the Android Host generates a stable device-and-project-specific value. Initial support is MQTT 3.1.1 over `mqtt://` or `mqtts://` with the Android system trust store. Messages received while no JavaScript listener exists are not buffered for later JavaScript delivery.
+
+## Native Events
+
+`nativeEvents` compares native events against configured conditions and runs actions in order while a project remains mounted and its Activity is paused. Rules can only be declared in `remix.config.ts`; runtime code cannot add or change them.
+
+```ts
+export default defineConfig({
+  // ...
+  nativeEvents: {
+    rules: [
+      {
+        on: "device:status:battery",
+        when: {
+          level: { lte: 0.15 },
+          charging: false,
+        },
+        actions: [
+          { type: "device.screen.wake" },
+          {
+            type: "device.vibration.trigger",
+            args: { duration: 500 },
+          },
+          {
+            type: "host.panel.status.setText",
+            args: { id: "battery", text: "Low battery" },
+          },
+        ],
+        expiresIn: 10000,
+      },
+    ],
+  },
+});
+```
+
+Keys in `when` use dot notation. Conditions may use direct value equality or the `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `contains`, and `exists` matchers. Native actions run immediately while the Activity is paused. WebView actions wait for the Activity to resume, so place `device.screen.wake` first when the remaining actions should run as soon as the screen wakes. Actions preserve their authored order, and a WebView action that cannot complete within `expiresIn` is discarded.
+
+The SDK common action registry owns action names, argument validation, and execution location, so context APIs and nativeEvents use the same action contract. `host.panel.buttons.set` remains context-only because it contains callbacks and cannot be used by nativeEvents.
 
 ## Mount Contract
 
@@ -404,8 +491,6 @@ export const mount: RemixAppMount = (container, context) => {
 2. Validate manifest and compatibility.
 3. Apply fixed device policy:
    - kiosk
-   - runtime foreground behavior
-   - CPU wake behavior
    - screen keep-on
    - automatic brightness
    - screen timeout
@@ -421,14 +506,24 @@ export const mount: RemixAppMount = (container, context) => {
 
 The Host remains mounted and alive. The remixApp project mounts only inside the provided project container.
 
+The Android Host foreground service and partial CPU wake lock are always-on Host invariants, independent of project configuration. Neither `remix.config.ts` nor `project.json` exposes an option to disable them.
+
 ## Initial Milestones
 
 1. Monorepo skeleton.
 2. `@remixapp/sdk` type contract.
 3. `@remixapp/cli` validate/build/package flow.
-4. `@remixapp/template` builds successfully.
-5. `@remixapp/app` loads the template `.remixprj`.
+4. `@remixapp/create` creates and builds a project successfully from its bundled template.
+5. `@remixapp/app` loads the generated `.remixprj`.
 6. `@remixapp/core` connects native functionality incrementally.
+
+## Releases
+
+Follow the [release guide](docs/internals/releasing.md) for Changesets, lockstep package versions, Android Host versioning, and template synchronization.
+
+## License
+
+remixApp, including the Host app and runtime, is licensed under the [Apache License 2.0](LICENSE). The project files generated from `packages/create-remixapp/template-default` are separately licensed under the [0BSD License](packages/create-remixapp/template-default/LICENSE), so applications created from the template may adopt any license.
 
 ## Initially Excluded
 

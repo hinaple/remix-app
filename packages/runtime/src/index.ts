@@ -1,4 +1,4 @@
-export { EventBus } from "./events.js";
+export { EventBus, type RuntimeEventSource } from "./events.js";
 export {
   createHostPanelContext,
   createNoopHostPanelContext,
@@ -10,6 +10,7 @@ export {
   createMemoryStatusChannel,
   type LazyStatusChannelOptions,
   type RuntimeListenerHandle,
+  type RuntimeStatusChannel,
   type RuntimeWritableStatus,
 } from "./status.js";
 export { SubscriptionScope, type Cleanup } from "./subscriptions.js";

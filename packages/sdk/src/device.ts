@@ -11,19 +11,18 @@ export interface RemixDeviceContext {
   screen: RemixScreenContext;
 
   /**
-   * Device status readers and subscriptions.
+   * Device status readers.
+   *
+   * Subscribe to status updates through `context.events`.
    */
   status: RemixDeviceStatusContext;
 
   /**
-   * Soft keyboard status readers and subscriptions.
+   * Soft keyboard status reader.
+   *
+   * Subscribe through `context.events.on("device:status:keyboard", ...)`.
    */
   keyboard: RemixReadableStatus<RemixKeyboardStatus>;
-
-  /**
-   * Runtime and wake behavior controls.
-   */
-  runtime: RemixRuntimeContext;
 
   /**
    * Hardware input capture controls.
@@ -111,13 +110,6 @@ export interface RemixReadableStatus<T> {
    */
   get(): Promise<T>;
 
-  /**
-   * Subscribes to status updates.
-   *
-   * The Host automatically unsubscribes active project subscriptions when the
-   * project is unmounted.
-   */
-  on(listener: (status: T) => void): () => void;
 }
 
 /**
@@ -198,21 +190,6 @@ export interface RemixKeyboardStatus {
    * Current soft keyboard height in CSS pixels.
    */
   height: number;
-}
-
-/**
- * Runtime controls exposed to project code.
- */
-export interface RemixRuntimeContext {
-  /**
-   * Enables or disables the Host foreground runtime service.
-   */
-  foreground(enabled: boolean): Promise<void>;
-
-  /**
-   * Enables or disables CPU keep-awake behavior at runtime.
-   */
-  keepCpuAwake(enabled: boolean): Promise<void>;
 }
 
 /**

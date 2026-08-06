@@ -1,6 +1,5 @@
 import type {
   RemixBatteryStatus,
-  RemixDeviceStatusContext,
   RemixKeyboardStatus,
   RemixNetworkStatus,
   RemixScreenStatus,
@@ -13,9 +12,11 @@ import {
 
 import type { DeviceState } from "./types.js";
 
-export type DevStatusContext = RemixDeviceStatusContext & {
+export interface DevStatusContext {
+  battery: RuntimeWritableStatus<RemixBatteryStatus>;
+  network: RuntimeWritableStatus<RemixNetworkStatus>;
   screen: RuntimeWritableStatus<RemixScreenStatus>;
-};
+}
 
 export type DevKeyboardContext = RuntimeWritableStatus<RemixKeyboardStatus>;
 

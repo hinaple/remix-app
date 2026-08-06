@@ -2,7 +2,7 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,
-    "types": ["vite/client"]
+    "types": ["node"]
   },
-  "include": ["remix.config.ts", "src/**/*.ts"]
+  "include": ["src/**/*.ts", "tsup.config.ts"]
 }

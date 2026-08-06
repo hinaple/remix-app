@@ -1,4 +1,3 @@
-import type { PluginListenerHandle } from "@capacitor/core";
 import type { EventBus, SubscriptionScope } from "@remixapp/runtime";
 import type {
   RemixAppMount,
@@ -9,17 +8,17 @@ import type {
 } from "@remixapp/sdk";
 
 import type { HostKeyboardLayout } from "./keyboard-layout.js";
+import type { ProjectActionClient } from "./action-client.js";
 
 export interface ProjectModule {
   mount?: RemixAppMount;
 }
 
 export interface LoadedProject {
+  actions: ProjectActionClient;
   baseUrl: string;
   events: EventBus;
-  keyListener: PluginListenerHandle;
   keyboardLayout: HostKeyboardLayout;
-  lifecycleListener: PluginListenerHandle;
   manifest: RemixProjectManifest;
   styleLinks: HTMLLinkElement[];
   subscriptions: SubscriptionScope;

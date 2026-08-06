@@ -1,42 +1,45 @@
 import { RemixCore } from "@remixapp/core";
-import type { SubscriptionScope } from "@remixapp/runtime";
 import type { RemixAppContext } from "@remixapp/sdk";
-
-import { createKeyboardContext, createStatusContext } from "./status-context.js";
+import type { ProjectActionClient } from "./action-client.js";
 
 export function createDeviceContext(
-  subscriptions: SubscriptionScope,
+  actions: ProjectActionClient,
+  status: RemixAppContext["device"]["status"],
+  keyboard: RemixAppContext["device"]["keyboard"],
 ): RemixAppContext["device"] {
   return {
     screen: {
-      wake: () => RemixCore.wakeScreen(),
-      setKeepOn: (enabled) => RemixCore.setKeepScreenOn({ enabled }),
-      setAutoBrightness: (enabled) => RemixCore.setAutoBrightness({ enabled }),
+      wake: () => actions.invoke("device.screen.wake"),
+      setKeepOn: (enabled) =>
+        actions.invoke("device.screen.setKeepOn", { enabled }),
+      setAutoBrightness: (enabled) =>
+        actions.invoke("device.screen.setAutoBrightness", { enabled }),
       setBrightness: (brightness) =>
-        RemixCore.setScreenBrightness({ brightness }),
+        actions.invoke("device.screen.setBrightness", { brightness }),
       setOrientation: (orientation) =>
-        RemixCore.setScreenOrientation({ orientation }),
-      setTimeout: (timeout) => RemixCore.setScreenTimeout({ timeout }),
+        actions.invoke("device.screen.setOrientation", { orientation }),
+      setTimeout: (timeout) =>
+        actions.invoke("device.screen.setTimeout", { timeout: timeout ?? null }),
     },
-    status: createStatusContext(subscriptions),
-    keyboard: createKeyboardContext(subscriptions),
-    runtime: {
-      foreground: (enabled) => RemixCore.setForegroundService({ enabled }),
-      keepCpuAwake: (enabled) => RemixCore.setKeepCpuAwake({ enabled }),
-    },
+    status,
+    keyboard,
     input: {
-      captureBack: (enabled) => RemixCore.captureBack({ enabled }),
-      captureKeys: (keys) => RemixCore.captureKeys({ keys }),
+      captureBack: (enabled) =>
+        actions.invoke("device.input.captureBack", { enabled }),
+      captureKeys: (keys) =>
+        actions.invoke("device.input.captureKeys", { keys }),
     },
     audio: {
       getVolume: async () => {
         const result = await RemixCore.getMediaVolume();
         return result.volume;
       },
-      setVolume: (volume) => RemixCore.setMediaVolume({ volume }),
+      setVolume: (volume) =>
+        actions.invoke("device.audio.setVolume", { volume }),
     },
     vibration: {
-      trigger: (duration) => RemixCore.vibrate({ duration }),
+      trigger: (duration) =>
+        actions.invoke("device.vibration.trigger", { duration }),
     },
   };
 }

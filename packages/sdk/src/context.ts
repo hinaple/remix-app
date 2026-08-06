@@ -1,6 +1,7 @@
 import type { RemixDeviceContext } from './device.js'
 import type { RemixEventContext } from './events.js'
 import type { RemixHostContext } from './host.js'
+import type { RemixMqttContext } from './mqtt.js'
 import type { RemixProjectContext } from './project.js'
 import type { RemixResourceContext } from './resources.js'
 
@@ -52,6 +53,11 @@ export interface RemixAppContext {
    * Host-provided event subscription API.
    */
   events: RemixEventContext
+
+  /**
+   * Native MQTT commands for connections declared in the project manifest.
+   */
+  mqtt: RemixMqttContext
 
   /**
    * Host UI and administration controls exposed to project code.

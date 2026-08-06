@@ -1,0 +1,41 @@
+{
+  "name": "@remixapp/create",
+  "version": "0.2.0",
+  "description": "Create a remixApp project",
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": {
+    "create-remixapp": "index.js"
+  },
+  "files": [
+    "index.js",
+    "dist",
+    "template-default"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hinaple/remix-app.git",
+    "directory": "packages/create-remixapp"
+  },
+  "homepage": "https://github.com/hinaple/remix-app#readme",
+  "bugs": {
+    "url": "https://github.com/hinaple/remix-app/issues"
+  },
+  "scripts": {
+    "build": "tsup",
+    "prepack": "pnpm build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "pnpm build && node --test test/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsup": "^8.5.1",
+    "typescript": "^5.8.3"
+  }
+}

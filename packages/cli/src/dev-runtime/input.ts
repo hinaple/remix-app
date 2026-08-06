@@ -8,12 +8,12 @@ export interface DevInputBridgeOptions {
 }
 
 export interface DevLifecycleBridgeOptions {
-  emitLifecycle(event: RemixEventMap["lifecycle"]): void;
+  emitLifecycle(event: RemixEventMap["project:lifecycle"]): void;
 }
 
 export interface DevControlBridgeOptions {
   emitKey(event: RemixKeyEvent): void;
-  emitLifecycle(event: RemixEventMap["lifecycle"]): void;
+  emitLifecycle(event: RemixEventMap["project:lifecycle"]): void;
   resetProject(): void;
   setStatus(status: string): void;
 }
@@ -109,7 +109,7 @@ export function installDevControls(options: DevControlBridgeOptions): void {
     .forEach((button) => {
       button.addEventListener("click", () => {
         const state = button.dataset
-          .remixLifecycle as RemixEventMap["lifecycle"]["state"];
+          .remixLifecycle as RemixEventMap["project:lifecycle"]["state"];
         options.emitLifecycle({ state });
         options.setStatus(`lifecycle ${state}`);
       });

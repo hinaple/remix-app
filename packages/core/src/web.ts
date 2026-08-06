@@ -9,6 +9,8 @@ import type {
   RemixKeyboardStatus,
   RemixLaunchProjectInstall,
   RemixMediaVolume,
+  RemixCoreMqttStatus,
+  RemixCoreMqttStatuses,
   RemixNetworkStatus,
   RemixPickedProjectPackage,
   RemixKioskResult,
@@ -16,34 +18,14 @@ import type {
 } from "./definitions.js";
 
 export class RemixCoreWeb extends WebPlugin implements RemixCorePlugin {
-  async wakeScreen(): Promise<void> {}
-
-  async setKeepScreenOn(): Promise<void> {}
-
-  async setAutoBrightness(): Promise<void> {}
-
-  async setScreenBrightness(): Promise<void> {}
-
-  async setScreenTimeout(): Promise<void> {}
-
   async setSystemUiMode(): Promise<void> {}
 
-  async setScreenOrientation(): Promise<void> {}
-
   async setSoftInputMode(): Promise<void> {}
-
-  async setForegroundService(): Promise<void> {}
-
-  async setKeepCpuAwake(): Promise<void> {}
 
   async setKioskMode(options: { enabled: boolean }): Promise<RemixKioskResult> {
     void options;
     return { active: false, permitted: false };
   }
-
-  async captureBack(): Promise<void> {}
-
-  async captureKeys(): Promise<void> {}
 
   async getDevicePolicyState(): Promise<RemixDevicePolicyState> {
     return {
@@ -99,10 +81,26 @@ export class RemixCoreWeb extends WebPlugin implements RemixCorePlugin {
     return { volume: 1 };
   }
 
-  async setMediaVolume(): Promise<void> {}
+  async executeAction(): Promise<void> {
+    throw new Error("Native actions are only available on Android.");
+  }
 
-  async vibrate(options: { duration?: number } = {}): Promise<void> {
-    navigator.vibrate?.(options.duration ?? 250);
+  async setProjectRuntimeState(): Promise<void> {}
+
+  async completeWebAction(): Promise<void> {}
+
+  async getMqttStatus(options: {
+    connection: string;
+  }): Promise<RemixCoreMqttStatus> {
+    return {
+      connection: options.connection,
+      state: "disconnected",
+      revision: 0,
+    };
+  }
+
+  async getMqttStatuses(): Promise<RemixCoreMqttStatuses> {
+    return { statuses: [] };
   }
 
   async installProjectPackage(): Promise<RemixInstallProjectPackageResult> {

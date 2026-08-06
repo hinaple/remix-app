@@ -3,7 +3,12 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
-import { listDevices, resolveAdb, run } from "./android-tools.mjs";
+import {
+  listAndroidDevices,
+  resolveAdb,
+  run,
+  selectAndroidDevice,
+} from "../packages/cli/android-tools/index.mjs";
 
 const root = process.cwd();
 const apkPath = join(
@@ -29,21 +34,23 @@ let devices;
 
 try {
   adb = resolveAdb();
-  devices = listDevices(adb);
+  devices = listAndroidDevices(adb);
 } catch (error) {
   fail(error instanceof Error ? error.message : String(error));
 }
 
-if (devices.length === 0) {
-  fail("No connected adb devices found.");
-}
-
-const targets = installAll ? devices : [devices[0]];
-
 try {
+  if (installAll && devices.length === 0) {
+    await selectAndroidDevice(devices);
+  }
+  const targets = installAll
+    ? devices
+    : [await selectAndroidDevice(devices)];
   for (const device of targets) {
-    console.log(`Installing ${apkPath} to ${device}`);
-    run(adb, ["-s", device, "install", "-r", apkPath]);
+    console.log(`Installing ${apkPath} to ${device.serial}`);
+    run(adb, ["-s", device.serial, "install", "-r", apkPath], {
+      stdio: "inherit",
+    });
   }
 } catch (error) {
   fail(error instanceof Error ? error.message : String(error));

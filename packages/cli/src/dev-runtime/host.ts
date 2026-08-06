@@ -1,8 +1,12 @@
 import type {
+  RemixActionArgsMap,
+  RemixActionType,
   RemixAppContext,
   RemixAppUnmount,
+  RemixHostPanelContext,
   RemixKeyEvent,
 } from "@remixapp/sdk";
+import { normalizeRemixActionCall } from "@remixapp/sdk";
 import {
   EventBus,
   SubscriptionScope,
@@ -10,7 +14,6 @@ import {
 } from "@remixapp/runtime";
 
 import {
-  clampUnit,
   setBrowserBrightness,
   setBrowserOrientation,
 } from "./browser.js";
@@ -20,7 +23,11 @@ import {
   installKeyboardBridge,
   installLifecycleBridge,
 } from "./input.js";
-import { createKeyboardContext, createStatusContext } from "./status.js";
+import {
+  createKeyboardContext,
+  createStatusContext,
+  type DevStatusContext,
+} from "./status.js";
 import type {
   DeviceState,
   RemixDevHostController,
@@ -50,12 +57,10 @@ class RemixDevHost implements RemixDevHostController {
   constructor(private readonly options: RemixDevHostOptions) {
     this.projectModule = options.projectModule;
     this.deviceState = {
-      foreground: options.manifest.runtime?.foreground ?? true,
       keepScreenOn: options.manifest.screen?.keepOn ?? false,
       autoBrightness: options.manifest.screen?.autoBrightness ?? false,
       brightness: 1,
       screenTimeout: options.manifest.screen?.timeout,
-      keepCpuAwake: options.manifest.runtime?.keepCpuAwake ?? false,
       orientation: options.manifest.screen?.orientation ?? "portrait",
       capturedKeys: new Set(options.manifest.input?.capturedKeys ?? []),
       captureBack: options.manifest.input?.captureBack ?? true,
@@ -75,11 +80,11 @@ class RemixDevHost implements RemixDevHostController {
       emitKey: (event) => this.emitKey(event),
     });
     installLifecycleBridge({
-      emitLifecycle: (event) => this.events.emit("lifecycle", event),
+      emitLifecycle: (event) => this.events.emit("project:lifecycle", event),
     });
     installDevControls({
       emitKey: (event) => this.emitKey(event),
-      emitLifecycle: (event) => this.events.emit("lifecycle", event),
+      emitLifecycle: (event) => this.events.emit("project:lifecycle", event),
       resetProject: () => {
         void this.resetProject();
       },
@@ -117,7 +122,7 @@ class RemixDevHost implements RemixDevHostController {
       const unmount = await this.projectModule.mount(this.root, context);
       this.projectUnmount = typeof unmount === "function" ? unmount : undefined;
       this.mounted = true;
-      this.events.emit("lifecycle", { state: "mounted" });
+      this.events.emit("project:lifecycle", { state: "mounted" });
       this.setStatus("mounted");
     } catch (error) {
       await this.projectSubscriptions.clear();
@@ -131,7 +136,7 @@ class RemixDevHost implements RemixDevHostController {
     }
 
     this.mounted = false;
-    this.events.emit("lifecycle", { state: "destroyed" });
+    this.events.emit("project:lifecycle", { state: "destroyed" });
 
     try {
       await this.projectUnmount?.();
@@ -159,6 +164,22 @@ class RemixDevHost implements RemixDevHostController {
     const statusContext = createStatusContext(subscriptions, this.deviceState);
     const keyboardContext = createKeyboardContext(subscriptions);
     const emitKeyboard = () => keyboardContext.emit();
+    const hostPanel = createHostPanelContext({
+      statusRoot: document.querySelector<HTMLElement>(
+        "[data-remix-project-panel-status]",
+      ),
+      buttonRoot: document.querySelector<HTMLElement>(
+        "[data-remix-project-panel-buttons]",
+      ),
+      setStatus: (status) => this.setStatus(status),
+    });
+    const invoke = (type: RemixActionType, args?: Record<string, unknown>) =>
+      this.executeAction(type, args, statusContext, hostPanel);
+
+    events.bindSource("device:status:battery", statusContext.battery);
+    events.bindSource("device:status:network", statusContext.network);
+    events.bindSource("device:status:screen", statusContext.screen);
+    events.bindSource("device:status:keyboard", keyboardContext);
 
     window.visualViewport?.addEventListener("resize", emitKeyboard);
     window.addEventListener("resize", emitKeyboard);
@@ -172,7 +193,7 @@ class RemixDevHost implements RemixDevHostController {
         name: this.options.manifest.name,
         version: this.options.manifest.version,
         manifest: this.options.manifest,
-        reset: () => this.resetProject(),
+        reset: () => invoke("project.reset"),
       },
       resources: {
         url: (resourcePath) =>
@@ -181,109 +202,206 @@ class RemixDevHost implements RemixDevHostController {
       device: {
         screen: {
           wake: async () => {
-            await this.requestWakeLock();
-            statusContext.screen.emit();
-            this.setStatus("screen wake requested");
+            await invoke("device.screen.wake");
           },
           setKeepOn: async (enabled) => {
-            this.deviceState.keepScreenOn = enabled;
-            if (enabled) {
-              await this.requestWakeLock();
-            } else {
-              await this.releaseWakeLock();
-            }
-            statusContext.screen.emit();
-            this.setStatus(
-              `screen keep-on ${enabled ? "enabled" : "disabled"}`,
-            );
+            await invoke("device.screen.setKeepOn", { enabled });
           },
           setAutoBrightness: async (enabled) => {
-            this.deviceState.autoBrightness = enabled;
-            statusContext.screen.emit();
-            this.setStatus(
-              `auto brightness ${enabled ? "enabled" : "disabled"}`,
-            );
+            await invoke("device.screen.setAutoBrightness", { enabled });
           },
           setBrightness: async (brightness) => {
-            this.deviceState.brightness = clampUnit(brightness);
-            setBrowserBrightness(this.deviceState.brightness);
-            statusContext.screen.emit();
-            this.setStatus(
-              `brightness ${this.deviceState.brightness.toFixed(2)}`,
-            );
+            await invoke("device.screen.setBrightness", { brightness });
           },
           setOrientation: async (orientation) => {
-            this.deviceState.orientation = orientation;
-            await setBrowserOrientation(orientation);
-            document.documentElement.dataset.remixOrientation = orientation;
-            statusContext.screen.emit();
-            this.setStatus(`orientation ${orientation}`);
+            await invoke("device.screen.setOrientation", { orientation });
           },
           setTimeout: async (timeout) => {
-            this.deviceState.screenTimeout = timeout;
-            statusContext.screen.emit();
-            this.setStatus(`screen timeout ${timeout ?? "restored"}`);
+            await invoke("device.screen.setTimeout", { timeout });
           },
         },
         status: statusContext,
         keyboard: keyboardContext,
-        runtime: {
-          foreground: async (enabled) => {
-            this.deviceState.foreground = enabled;
-            this.setStatus(
-              `foreground runtime ${enabled ? "enabled" : "disabled"}`,
-            );
-          },
-          keepCpuAwake: async (enabled) => {
-            this.deviceState.keepCpuAwake = enabled;
-            if (enabled) {
-              await this.requestWakeLock();
-            }
-            this.setStatus(
-              `CPU keep-awake ${enabled ? "enabled" : "disabled"}`,
-            );
-          },
-        },
         input: {
           captureBack: async (enabled) => {
-            this.deviceState.captureBack = enabled;
-            this.setStatus(`back capture ${enabled ? "enabled" : "disabled"}`);
+            await invoke("device.input.captureBack", { enabled });
           },
           captureKeys: async (keys) => {
-            this.deviceState.capturedKeys = new Set(keys);
-            this.setStatus(`captured keys: ${keys.join(", ") || "none"}`);
+            await invoke("device.input.captureKeys", { keys });
           },
         },
         audio: {
           getVolume: async () => 1,
           setVolume: async (volume) => {
-            this.setStatus(`media volume ${clampUnit(volume).toFixed(2)}`);
+            await invoke("device.audio.setVolume", { volume });
           },
         },
         vibration: {
           trigger: async (duration = 250) => {
-            navigator.vibrate?.(duration);
-            this.setStatus(`vibration ${duration}ms`);
+            await invoke("device.vibration.trigger", { duration });
           },
         },
       },
       events,
-      host: {
-        panel: createHostPanelContext({
-          statusRoot: document.querySelector<HTMLElement>(
-            "[data-remix-project-panel-status]",
-          ),
-          buttonRoot: document.querySelector<HTMLElement>(
-            "[data-remix-project-panel-buttons]",
-          ),
-          setStatus: (status) => this.setStatus(status),
+      mqtt: {
+        getStatus: async (connection) => ({
+          connection,
+          state: "disconnected",
+          reason: "MQTT is only available in the Android Host",
         }),
+        publish: async (connection, topic, payload, options) => {
+          await invoke("mqtt.publish", {
+            connection,
+            topic,
+            payload:
+              typeof payload === "string"
+                ? { text: payload }
+                : { base64: encodeBase64(payload) },
+            ...options,
+          });
+        },
+      },
+      host: {
+        panel: {
+          buttons: {
+            set: (buttons) => {
+              void invoke("host.panel.buttons.set", { buttons });
+            },
+            clear: () => {
+              void invoke("host.panel.buttons.clear");
+            },
+          },
+          status: {
+            set: (status) => {
+              void invoke("host.panel.status.set", { status });
+            },
+            setText: (id, text) => {
+              void invoke("host.panel.status.setText", { id, text });
+            },
+            remove: (id) => {
+              void invoke("host.panel.status.remove", { id });
+            },
+            clear: () => {
+              void invoke("host.panel.status.clear");
+            },
+          },
+        },
       },
     };
   }
 
+  private async executeAction(
+    type: RemixActionType,
+    args: Record<string, unknown> | undefined,
+    statusContext: DevStatusContext,
+    hostPanel: RemixHostPanelContext,
+  ): Promise<void> {
+    const action = normalizeRemixActionCall({ type, args });
+
+    switch (action.type) {
+      case "device.screen.wake":
+        await this.requestWakeLock();
+        statusContext.screen.emit();
+        this.setStatus("screen wake requested");
+        return;
+      case "device.screen.setKeepOn": {
+        const { enabled } = action.args as RemixActionArgsMap["device.screen.setKeepOn"];
+        this.deviceState.keepScreenOn = enabled;
+        if (enabled) await this.requestWakeLock();
+        else await this.releaseWakeLock();
+        statusContext.screen.emit();
+        this.setStatus(`screen keep-on ${enabled ? "enabled" : "disabled"}`);
+        return;
+      }
+      case "device.screen.setAutoBrightness": {
+        const { enabled } = action.args as RemixActionArgsMap["device.screen.setAutoBrightness"];
+        this.deviceState.autoBrightness = enabled;
+        statusContext.screen.emit();
+        this.setStatus(`auto brightness ${enabled ? "enabled" : "disabled"}`);
+        return;
+      }
+      case "device.screen.setBrightness": {
+        const { brightness } = action.args as RemixActionArgsMap["device.screen.setBrightness"];
+        this.deviceState.brightness = brightness;
+        setBrowserBrightness(brightness);
+        statusContext.screen.emit();
+        this.setStatus(`brightness ${brightness.toFixed(2)}`);
+        return;
+      }
+      case "device.screen.setOrientation": {
+        const { orientation } = action.args as RemixActionArgsMap["device.screen.setOrientation"];
+        this.deviceState.orientation = orientation;
+        await setBrowserOrientation(orientation);
+        document.documentElement.dataset.remixOrientation = orientation;
+        statusContext.screen.emit();
+        this.setStatus(`orientation ${orientation}`);
+        return;
+      }
+      case "device.screen.setTimeout": {
+        const { timeout } = action.args as RemixActionArgsMap["device.screen.setTimeout"];
+        this.deviceState.screenTimeout = timeout ?? undefined;
+        statusContext.screen.emit();
+        this.setStatus(`screen timeout ${timeout ?? "restored"}`);
+        return;
+      }
+      case "device.input.captureBack": {
+        const { enabled } = action.args as RemixActionArgsMap["device.input.captureBack"];
+        this.deviceState.captureBack = enabled;
+        this.setStatus(`back capture ${enabled ? "enabled" : "disabled"}`);
+        return;
+      }
+      case "device.input.captureKeys": {
+        const { keys } = action.args as RemixActionArgsMap["device.input.captureKeys"];
+        this.deviceState.capturedKeys = new Set(keys);
+        this.setStatus(`captured keys: ${keys.join(", ") || "none"}`);
+        return;
+      }
+      case "device.audio.setVolume": {
+        const { volume } = action.args as RemixActionArgsMap["device.audio.setVolume"];
+        this.setStatus(`media volume ${volume.toFixed(2)}`);
+        return;
+      }
+      case "device.vibration.trigger": {
+        const { duration = 250 } = action.args as RemixActionArgsMap["device.vibration.trigger"];
+        navigator.vibrate?.(duration);
+        this.setStatus(`vibration ${duration}ms`);
+        return;
+      }
+      case "mqtt.publish":
+        throw new Error("MQTT publishing is only available in the Android Host.");
+      case "project.reset":
+        await this.resetProject();
+        return;
+      case "host.panel.buttons.set":
+        hostPanel.buttons.set(
+          (action.args as RemixActionArgsMap["host.panel.buttons.set"]).buttons,
+        );
+        return;
+      case "host.panel.buttons.clear":
+        hostPanel.buttons.clear();
+        return;
+      case "host.panel.status.set":
+        hostPanel.status.set(
+          (action.args as RemixActionArgsMap["host.panel.status.set"]).status,
+        );
+        return;
+      case "host.panel.status.setText": {
+        const { id, text } = action.args as RemixActionArgsMap["host.panel.status.setText"];
+        hostPanel.status.setText(id, text);
+        return;
+      }
+      case "host.panel.status.remove":
+        hostPanel.status.remove(
+          (action.args as RemixActionArgsMap["host.panel.status.remove"]).id,
+        );
+        return;
+      case "host.panel.status.clear":
+        hostPanel.status.clear();
+    }
+  }
+
   private emitKey(event: RemixKeyEvent): void {
-    this.events.emit("key", event);
+    this.events.emit("device:key", event);
     this.setStatus(`key ${event.key} ${event.action}`);
   }
 
@@ -292,7 +410,7 @@ class RemixDevHost implements RemixDevHostController {
       this.deviceState.orientation;
     setBrowserBrightness(this.deviceState.brightness);
 
-    if (this.deviceState.keepScreenOn || this.deviceState.keepCpuAwake) {
+    if (this.deviceState.keepScreenOn) {
       await this.requestWakeLock();
     }
 
@@ -327,4 +445,10 @@ class RemixDevHost implements RemixDevHostController {
       this.status.textContent = value;
     }
   }
+}
+
+function encodeBase64(value: Uint8Array): string {
+  let binary = "";
+  for (const byte of value) binary += String.fromCharCode(byte);
+  return btoa(binary);
 }

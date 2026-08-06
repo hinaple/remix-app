@@ -1,7 +1,14 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import type { RemixProjectManifest } from "@remixapp/sdk";
+import {
+  normalizeRemixActionCall,
+  REMIX_PROJECT_FORMAT_VERSION,
+  REMIX_RUNTIME_API_VERSION,
+  REMIX_TOOLCHAIN_VERSION,
+  type RemixConfig,
+  type RemixProjectManifest,
+} from "@remixapp/sdk";
 import {
   build as viteBuild,
   mergeConfig,
@@ -168,9 +175,10 @@ async function stagePackage(
     name: string;
     version: string;
     kiosk?: boolean;
-    runtime?: RemixProjectManifest["runtime"];
     screen?: RemixProjectManifest["screen"];
     input?: RemixProjectManifest["input"];
+    mqtt?: RemixConfig["mqtt"];
+    nativeEvents?: RemixConfig["nativeEvents"];
   },
 ): Promise<void> {
   await fs.cp(paths.viteOutDir, paths.packageSrcDir, { recursive: true });
@@ -234,9 +242,10 @@ async function writeProjectManifest(
     name: string;
     version: string;
     kiosk?: boolean;
-    runtime?: RemixProjectManifest["runtime"];
     screen?: RemixProjectManifest["screen"];
     input?: RemixProjectManifest["input"];
+    mqtt?: RemixConfig["mqtt"];
+    nativeEvents?: RemixConfig["nativeEvents"];
   },
 ): Promise<void> {
   const manifest = createProjectManifest(config);
@@ -252,19 +261,73 @@ export function createProjectManifest(config: {
   name: string;
   version: string;
   kiosk?: boolean;
-  runtime?: RemixProjectManifest["runtime"];
   screen?: RemixProjectManifest["screen"];
   input?: RemixProjectManifest["input"];
+  mqtt?: RemixConfig["mqtt"];
+  nativeEvents?: RemixConfig["nativeEvents"];
 }): RemixProjectManifest {
   const manifest: RemixProjectManifest = {
+    formatVersion: REMIX_PROJECT_FORMAT_VERSION,
+    runtimeApiVersion: REMIX_RUNTIME_API_VERSION,
+    builtWith: {
+      cli: REMIX_TOOLCHAIN_VERSION,
+      sdk: REMIX_TOOLCHAIN_VERSION,
+    },
     name: config.name,
     version: config.version,
     entry: "src/index.js",
     styles: ["src/style.css"],
     ...(config.kiosk === undefined ? {} : { kiosk: config.kiosk }),
-    ...(config.runtime === undefined ? {} : { runtime: config.runtime }),
     ...(config.screen === undefined ? {} : { screen: config.screen }),
     ...(config.input === undefined ? {} : { input: config.input }),
+    ...(config.mqtt === undefined
+      ? {}
+      : {
+          mqtt: {
+            connections: Object.fromEntries(
+              Object.entries(config.mqtt.connections).map(
+                ([name, connection]) => [
+                  name,
+                  {
+                    url: connection.url,
+                    ...(connection.clientId === undefined
+                      ? {}
+                      : { clientId: connection.clientId }),
+                    ...(connection.username === undefined
+                      ? {}
+                      : { username: connection.username }),
+                    ...(connection.password === undefined
+                      ? {}
+                      : { password: connection.password }),
+                    keepAliveSeconds: connection.keepAliveSeconds ?? 30,
+                    cleanSession: connection.cleanSession ?? true,
+                    reconnect: connection.reconnect ?? true,
+                    subscriptions: (connection.subscriptions ?? []).map(
+                      (subscription) => ({
+                        filter: subscription.filter,
+                        qos: subscription.qos ?? 0,
+                      }),
+                    ),
+                  },
+                ],
+              ),
+            ),
+          },
+        }),
+    ...(config.nativeEvents === undefined
+      ? {}
+      : {
+          nativeEvents: {
+            rules: config.nativeEvents.rules.map((rule) => ({
+              on: rule.on,
+              when: rule.when ?? {},
+              actions: rule.actions.map((action) =>
+                normalizeRemixActionCall(action, { nativeEvents: true }),
+              ),
+              expiresIn: rule.expiresIn ?? 10_000,
+            })),
+          },
+        }),
   };
 
   return manifest;

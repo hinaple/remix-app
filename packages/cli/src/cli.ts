@@ -3,6 +3,7 @@ import { buildProject } from './build.js'
 import { devProject } from './dev.js'
 import { deployProject } from './deploy.js'
 import { RemixCliError } from './errors.js'
+import { AndroidToolsError } from '../android-tools/index.mjs'
 
 async function main(): Promise<void> {
   const [, , command, ...args] = process.argv
@@ -187,7 +188,7 @@ Usage:
 }
 
 main().catch((error: unknown) => {
-  if (error instanceof RemixCliError) {
+  if (error instanceof RemixCliError || error instanceof AndroidToolsError) {
     console.error(`Error: ${error.message}`)
     process.exitCode = 1
     return

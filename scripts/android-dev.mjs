@@ -11,7 +11,12 @@ import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { listDevices, resolveAdb, run } from "./android-tools.mjs";
+import {
+  listAndroidDevices,
+  resolveAdb,
+  run,
+  selectAndroidDevice,
+} from "../packages/cli/android-tools/index.mjs";
 
 const HOST = "127.0.0.1";
 const PORT = 5173;
@@ -45,18 +50,17 @@ let requestedExitCode;
 
 try {
   adb = resolveAdb();
-  const devices = listDevices(adb);
-  if (devices.length === 0) {
-    throw new Error("No connected adb devices found.");
-  }
-  device = devices[0];
-  console.log(`Using Android device: ${device}`);
+  const devices = listAndroidDevices(adb);
+  device = await selectAndroidDevice(devices);
+  console.log(`Using Android device: ${device.serial}`);
 
   run(pnpm, [...pnpmArgs, "--filter", "@remixapp/app...", "build"], {
     cwd: root,
+    stdio: "inherit",
   });
   run(pnpm, [...pnpmArgs, "--filter", "@remixapp/app", "cap:sync"], {
     cwd: root,
+    stdio: "inherit",
   });
 
   createLiveReloadSource();
@@ -66,11 +70,11 @@ try {
       ":app:assembleLiveReload",
       `-PremixLiveReloadSourceDir=${generatedSourceDir}`,
     ],
-    { cwd: androidDir },
+    { cwd: androidDir, stdio: "inherit" },
   );
 
   const apk = findLiveReloadApk();
-  run(adb, ["-s", device, "reverse", `tcp:${PORT}`, `tcp:${PORT}`]);
+  run(adb, ["-s", device.serial, "reverse", `tcp:${PORT}`, `tcp:${PORT}`]);
   reverseInstalled = true;
 
   vite = spawn(
@@ -96,11 +100,13 @@ try {
   installSignalHandlers();
   await waitForServer(vite);
 
-  run(adb, ["-s", device, "install", "-r", apk]);
-  run(adb, ["-s", device, "shell", "am", "force-stop", APP_ID]);
-  run(adb, ["-s", device, "shell", "am", "start", "-n", ACTIVITY]);
+  run(adb, ["-s", device.serial, "install", "-r", apk], {
+    stdio: "inherit",
+  });
+  run(adb, ["-s", device.serial, "shell", "am", "force-stop", APP_ID]);
+  run(adb, ["-s", device.serial, "shell", "am", "start", "-n", ACTIVITY]);
 
-  console.log(`Live reload ready on ${device}. Press Ctrl+C to stop.`);
+  console.log(`Live reload ready on ${device.serial}. Press Ctrl+C to stop.`);
   const code = await viteExit;
   if (requestedExitCode === undefined && code !== 0) {
     throw new Error(`Vite exited with code ${code ?? 1}.`);
@@ -110,7 +116,7 @@ try {
   process.exitCode = 1;
 } finally {
   if (reverseInstalled && adb && device) {
-    run(adb, ["-s", device, "reverse", "--remove", `tcp:${PORT}`], {
+    run(adb, ["-s", device.serial, "reverse", "--remove", `tcp:${PORT}`], {
       allowFailure: true,
     });
   }

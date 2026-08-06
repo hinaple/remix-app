@@ -52,9 +52,9 @@ remixApp 프로젝트는 Android APK가 아니며 standalone web app도 아닙�
 - npm scope: `@remixapp`
 - SDK 패키지: `@remixapp/sdk`
 - CLI 패키지: `@remixapp/cli`
+- 프로젝트 생성기 패키지: `@remixapp/create`
 - Host APK 패키지: `@remixapp/app`
 - native/core 패키지: `@remixapp/core`
-- template 패키지: `@remixapp/template`
 - Android application ID: `com.fainthit.remix`
 - source config 파일: `remix.config.ts` 또는 `remix.config.js`
 - built project manifest: `project.json`
@@ -72,7 +72,8 @@ packages/
 ├─ core/
 ├─ sdk/
 ├─ cli/
-└─ template/
+└─ create-remixapp/
+   └─ template-default/
 ```
 
 루트 파일:
@@ -123,13 +124,13 @@ Device Owner admin component는 `com.fainthit.remix/.RemixDeviceAdminReceiver`�
 - kiosk, fullscreen, immersive mode.
 - screen keep-on.
 - 자동 밝기와 화면 밝기 제어.
-- wake lock과 CPU wake 동작.
+- 항상 활성화되는 foreground runtime과 CPU wake lock 소유권.
 - hardware key capture.
 - back key capture.
 - audio, video, device-specific native 기능.
 - 기타 현장 기기 제어 기능.
 
-초기 Android bridge는 screen wake, screen keep-on, 자동 밝기 제어, 화면 밝기 제어, CPU wake lock, lock-task kiosk 제어, Device Owner 상태, Android back capture, 지원 hardware key event를 제공합니다. Host는 프로젝트 mount 전에 manifest의 fixed policy를 적용하고 unmount/reset 시 프로젝트가 사용한 runtime policy를 해제합니다.
+초기 Android bridge는 screen wake, screen keep-on, 자동 밝기 제어, 화면 밝기 제어, 항상 활성화되는 foreground runtime과 CPU wake lock, lock-task kiosk 제어, Device Owner 상태, Android back capture, 지원 hardware key event를 제공합니다. Host는 프로젝트 mount 전에 manifest의 fixed policy를 적용하고 unmount/reset 시 프로젝트가 사용한 screen/input policy를 해제합니다.
 
 프로젝트 개발자는 `@remixapp/core`를 직접 import하지 않습니다. Host APK가 내부적으로 사용하고, 필요한 기능은 `RemixAppContext`를 통해 노출합니다.
 
@@ -168,19 +169,27 @@ SDK는 가볍게 유지해야 합니다. Capacitor 구현, native bridge, 무거
 
 CLI는 config 없음, invalid config, entry 없음, configured style 없음, Vite build 실패, generated JS entry 없음, resource copy 실패, ZIP package 생성 실패를 명확하게 실패 처리해야 합니다.
 
-### @remixapp/template
+### @remixapp/create
 
-`@remixapp/template`은 최소 starter project이자 build fixture입니다.
+`@remixapp/create`는 `npm create @remixapp@latest` 프로젝트 생성기를 제공합니다.
 
-포함 항목:
+```sh
+npm create @remixapp@latest
+npm create @remixapp@latest -- --name "My Room" --version 0.1.0
+npm create @remixapp@latest -- --name "My Room" --version 0.1.0 --force
+```
 
-- `package.json`
-- `remix.config.ts` 또는 `remix.config.js`
-- `src/index.ts`
-- `src/style.css`
-- `resources/`
+책임:
 
-template은 `remix-cli build`로 빌드 가능한 최소 vanilla TypeScript/JavaScript remixApp 프로젝트입니다.
+- 옵션으로 제공되지 않은 project name과 version 질문.
+- project name을 소문자 dash 형식의 npm package name으로 정규화.
+- 현재 작업 디렉터리 아래에 정규화된 이름으로 프로젝트 생성.
+- 설치된 npm package에 포함된 `template-default` 복사.
+- 프로젝트별 `package.json`, `remix.config.ts` 값 생성.
+- 실행한 package manager로 dependency 설치하며 감지할 수 없으면 npm 사용.
+- 기존 디렉터리에 쓸 때 확인하고 `--force` 사용 시 확인 생략.
+
+내장 template은 `remix-cli build`로 빌드 가능한 최소 vanilla TypeScript/JavaScript remixApp 프로젝트입니다. 생성기는 Git 저장소를 초기화하지 않습니다.
 
 ## Source Project 형태
 
@@ -220,10 +229,6 @@ export default defineConfig({
   entry: "src/index.ts",
   styles: ["src/style.css"],
   kiosk: true,
-  runtime: {
-    foreground: true,
-    keepCpuAwake: true,
-  },
   screen: {
     keepOn: false,
     autoBrightness: false,
@@ -291,15 +296,17 @@ CSS가 없더라도 CLI는 empty `src/style.css`를 생성합니다.
 
 ```json
 {
+  "formatVersion": 1,
+  "runtimeApiVersion": 2,
+  "builtWith": {
+    "cli": "0.2.0",
+    "sdk": "0.2.0"
+  },
   "name": "airport",
   "version": "1.0.0",
   "entry": "src/index.js",
   "styles": ["src/style.css"],
   "kiosk": true,
-  "runtime": {
-    "foreground": true,
-    "keepCpuAwake": true
-  },
   "screen": {
     "keepOn": false,
     "autoBrightness": false,
@@ -311,6 +318,8 @@ CSS가 없더라도 CLI는 empty `src/style.css`를 생성합니다.
   }
 }
 ```
+
+`formatVersion`과 `runtimeApiVersion`은 CLI가 자동으로 기록하며 프로젝트 설정에서 직접 지정하지 않습니다. `builtWith`는 호환성 판정보다는 장애 진단에 사용합니다. 필드가 없던 초기 package는 project format 1, runtime API 1로 처리합니다. Host 0.2는 runtime API 2를 요구하므로 이전 프로젝트는 설치 전에 다시 빌드해야 합니다.
 
 Host는 original source entry나 source style list를 알 필요가 없습니다. Host는 항상 normalized built files를 로드합니다.
 
@@ -354,6 +363,84 @@ video.src = context.resources.url("video/intro.mp4");
 ```
 
 `context.resources.url(path)`는 browser/WebView API에서 바로 사용할 수 있는 URL을 반환합니다. 기본적으로 Android filesystem detail은 프로젝트 코드에 노출하지 않아야 합니다.
+
+## MQTT
+
+MQTT 연결과 고정 구독은 `remix.config.ts`에서만 선언합니다.
+
+```ts
+export default defineConfig({
+  // ...
+  mqtt: {
+    connections: {
+      primary: {
+        url: "mqtts://broker.example.com:8883",
+        username: "device-user",
+        password: "device-password",
+        subscriptions: [
+          { filter: "devices/+/commands", qos: 1 },
+        ],
+      },
+    },
+  },
+});
+```
+
+CLI는 MQTT 설정을 정규화하여 `project.json`에 기록합니다. 자격증명도 package manifest에 직접 저장되므로 보호되는 secret이 아니라 설정값으로 취급해야 합니다. 각 연결은 Android foreground service가 소유하여 WebView lifecycle과 독립적으로 유지합니다. 프로젝트 코드는 상태 조회와 publish만 할 수 있으며 runtime에서 연결, 연결 해제, 구독 변경은 할 수 없습니다.
+
+```ts
+const offStatus = context.events.on("mqtt:status", (status) => {
+  console.log(status.connection, status.state);
+});
+
+const offMessage = context.events.on("mqtt:message", (message) => {
+  console.log(message.connection, message.topic, message.payload);
+});
+
+await context.mqtt.publish("primary", "devices/kiosk-1/state", "ready", {
+  qos: 1,
+  retain: true,
+});
+```
+
+`keepAliveSeconds`, `cleanSession`, `reconnect`, subscription `qos`의 기본값은 각각 `30`, `true`, `true`, `0`입니다. `clientId`를 생략하면 Android Host가 기기와 프로젝트에 대해 안정적인 값을 생성합니다. 초기 구현은 Android system trust store를 사용하는 `mqtt://` 또는 `mqtts://` MQTT 3.1.1 연결을 지원합니다. JavaScript listener가 없는 동안 수신한 메시지는 이후 JavaScript 전달을 위해 버퍼링하지 않습니다.
+
+## Native Events
+
+`nativeEvents`는 프로젝트가 mount된 상태에서 Activity가 pause되어 있을 때 native event를 조건과 비교해 action을 순서대로 실행합니다. 설정은 `remix.config.ts`에서만 선언하며 runtime code에서는 규칙을 추가하거나 변경할 수 없습니다.
+
+```ts
+export default defineConfig({
+  // ...
+  nativeEvents: {
+    rules: [
+      {
+        on: "device:status:battery",
+        when: {
+          level: { lte: 0.15 },
+          charging: false,
+        },
+        actions: [
+          { type: "device.screen.wake" },
+          {
+            type: "device.vibration.trigger",
+            args: { duration: 500 },
+          },
+          {
+            type: "host.panel.status.setText",
+            args: { id: "battery", text: "Low battery" },
+          },
+        ],
+        expiresIn: 10000,
+      },
+    ],
+  },
+});
+```
+
+`when`의 key는 dot notation이며, 값 직접 비교 또는 `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `contains`, `exists` matcher를 사용할 수 있습니다. Native action은 Activity가 pause된 상태에서도 즉시 실행됩니다. WebView action은 Activity가 resume될 때까지 기다린 뒤 실행되므로, 즉시 화면을 깨우고 이어서 실행하려면 위 예시처럼 `device.screen.wake`를 첫 action으로 둡니다. 각 rule의 action은 작성 순서를 보존하며, `expiresIn` 안에 완료되지 못한 WebView action은 폐기됩니다.
+
+action type과 인자 검증, 실행 위치는 SDK의 공통 action registry가 관리합니다. 따라서 context API와 nativeEvents는 같은 action 계약을 사용합니다. `host.panel.buttons.set`은 callback을 포함하므로 context에서만 사용할 수 있고 nativeEvents에는 사용할 수 없습니다.
 
 ## Mount Contract
 
@@ -404,8 +491,6 @@ export const mount: RemixAppMount = (container, context) => {
 2. manifest와 compatibility 검증.
 3. fixed device policy 적용:
    - kiosk
-   - runtime foreground behavior
-   - CPU wake behavior
    - screen keep-on
    - automatic brightness
    - screen timeout
@@ -421,14 +506,24 @@ export const mount: RemixAppMount = (container, context) => {
 
 Host는 계속 mounted/alive 상태를 유지합니다. remixApp project는 제공된 project container 안에만 mount됩니다.
 
+Android Host의 foreground service와 partial CPU wake lock은 프로젝트 설정과 무관한 Host invariant로 항상 활성화됩니다. `remix.config.ts`와 `project.json`에는 이를 끄는 옵션이 없습니다.
+
 ## 초기 마일스톤
 
 1. Monorepo skeleton.
 2. `@remixapp/sdk` type contract.
 3. `@remixapp/cli` validate/build/package flow.
-4. `@remixapp/template` build 성공.
-5. `@remixapp/app`에서 template `.remixprj` load 성공.
+4. `@remixapp/create` 내장 template으로 프로젝트 생성 및 build 성공.
+5. `@remixapp/app`에서 생성된 `.remixprj` load 성공.
 6. `@remixapp/core` native 기능 점진적 연결.
+
+## 릴리스
+
+공식 패키지, Android Host, 생성 템플릿의 버전 동기화와 Changesets 기반 릴리스 절차는 [릴리스 가이드](docs/internals/releasing.md)를 따릅니다.
+
+## 라이선스
+
+Host app과 runtime을 포함한 remixApp은 [Apache License 2.0](LICENSE)으로 배포합니다. `packages/create-remixapp/template-default`에서 생성되는 프로젝트 파일에는 별도의 [0BSD License](packages/create-remixapp/template-default/LICENSE)를 적용하므로, 생성한 애플리케이션은 원하는 라이선스를 선택할 수 있습니다.
 
 ## 초기 제외 범위
 

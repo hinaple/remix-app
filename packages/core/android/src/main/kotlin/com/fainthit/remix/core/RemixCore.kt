@@ -45,7 +45,6 @@ class RemixCore(private val activity: Activity) {
     private val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
     private val connectivityManager =
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-    private var cpuWakeLock: PowerManager.WakeLock? = null
     private var systemUiMode = SystemUiMode(immersive = false, hideSystemBars = false)
     private var keepScreenOn = false
     private var autoBrightness = false
@@ -167,14 +166,6 @@ class RemixCore(private val activity: Activity) {
         }
     }
 
-    fun setForegroundService(enabled: Boolean) {
-        if (enabled) {
-            RemixForegroundService.start(context)
-        } else {
-            RemixForegroundService.stop(context)
-        }
-    }
-
     fun applySystemUiMode() {
         activity.runOnUiThread {
             val decorView = activity.window.decorView
@@ -214,25 +205,6 @@ class RemixCore(private val activity: Activity) {
                 0
             }
         }
-    }
-
-    fun setKeepCpuAwake(enabled: Boolean) {
-        if (enabled) {
-            if (cpuWakeLock?.isHeld == true) {
-                return
-            }
-
-            cpuWakeLock = powerManager.newWakeLock(
-                PowerManager.PARTIAL_WAKE_LOCK,
-                "remixApp:cpuWake",
-            ).apply {
-                setReferenceCounted(false)
-                acquire()
-            }
-            return
-        }
-
-        releaseCpuWakeLock()
     }
 
     fun setKioskMode(enabled: Boolean): KioskState {
@@ -517,6 +489,7 @@ class RemixCore(private val activity: Activity) {
         }
 
         previousDirectory.deleteRecursively()
+        RemixForegroundService.syncActiveProject(context)
         return InstalledProject(true, activeDirectory.absolutePath, directoryUrl(activeDirectory))
     }
 
@@ -532,6 +505,7 @@ class RemixCore(private val activity: Activity) {
 
     fun exitApp() {
         destroy()
+        RemixForegroundService.stop(context)
 
         if (isLockTaskActive()) {
             runOnUiThreadBlocking {
@@ -545,8 +519,6 @@ class RemixCore(private val activity: Activity) {
     }
 
     fun destroy() {
-        releaseCpuWakeLock()
-        setForegroundService(false)
         setScreenOrientation("unspecified")
         setSoftInputMode(adjust = "nothing", state = "unspecified")
         setKeyguardDisabled(false)
@@ -610,15 +582,6 @@ class RemixCore(private val activity: Activity) {
     private fun isLockTaskActive(): Boolean {
         val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         return activityManager.lockTaskModeState != ActivityManager.LOCK_TASK_MODE_NONE
-    }
-
-    private fun releaseCpuWakeLock() {
-        cpuWakeLock?.let {
-            if (it.isHeld) {
-                it.release()
-            }
-        }
-        cpuWakeLock = null
     }
 
     private fun runOnUiThreadBlocking(action: () -> Unit) {

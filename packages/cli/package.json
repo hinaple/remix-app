@@ -1,6 +1,8 @@
 {
   "name": "@remixapp/cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
+  "description": "Build, develop, and deploy remixApp projects",
+  "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/cli.js",
   "types": "./dist/cli.d.ts",
@@ -15,22 +17,39 @@
     }
   },
   "bin": {
-    "remix-cli": "./dist/cli.js"
+    "remix-cli": "dist/cli.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "android-tools"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hinaple/remix-app.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/hinaple/remix-app#readme",
+  "bugs": {
+    "url": "https://github.com/hinaple/remix-app/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "build": "tsup",
+    "prepack": "pnpm build",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@remixapp/runtime": "workspace:*",
-    "@remixapp/sdk": "workspace:*",
+    "@remixapp/sdk": "0.2.0",
     "archiver": "^7.0.1",
     "vite": "^7.0.0"
   },
   "devDependencies": {
+    "@remixapp/runtime": "0.2.0",
     "@types/archiver": "^6.0.3",
     "@types/node": "^24.0.0",
     "tsup": "^8.5.1"
