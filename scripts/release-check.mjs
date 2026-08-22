@@ -37,6 +37,7 @@ const steps = [
   pnpmStep("@remixapp/create tests", ["--filter", "@remixapp/create", "test"]),
   pnpmStep("example unpack", ["build:example:unpack"]),
   ["example manifest", node, ["scripts/verify-example-manifest.mjs"]],
+  pnpmStep("Capacitor sync", ["cap:sync"]),
   pnpmStep("Android debug APK", ["android:build"]),
 ];
 
