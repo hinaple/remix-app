@@ -1,4 +1,3 @@
-import { RemixCore } from "@remixapp/core";
 import {
   EventBus,
   SubscriptionScope,
@@ -6,6 +5,8 @@ import {
 } from "@remixapp/runtime";
 
 import { createProjectContext, clearHostPanel } from "./context.js";
+import { ProjectActionClient } from "./action-client.js";
+import { RemixCore } from "@remixapp/core";
 import {
   createHostKeyboardLayout,
   type HostKeyboardLayout,
@@ -13,6 +14,7 @@ import {
 import { loadManifest } from "./manifest.js";
 import { loadProjectModule } from "./module-loader.js";
 import { clearProjectMountHost, createProjectMountHost } from "./mount-host.js";
+import { bindNativeProjectEvents } from "./native-events.js";
 import { normalizeBaseUrl } from "./paths.js";
 import { applyProjectPolicy, clearProjectPolicy } from "./policy.js";
 import { loadStyles, removeStyles } from "./styles.js";
@@ -38,29 +40,27 @@ export class RemixProjectRuntime {
     const manifest = await loadManifest(normalizedBaseUrl);
     const subscriptions = new SubscriptionScope();
     const events = new EventBus(subscriptions);
-    const keyListener = await RemixCore.addListener("key", (event) => {
-      this.options.onKey?.(event);
-      events.emit("key", event);
-    });
-    const lifecycleListener = await RemixCore.addListener(
-      "lifecycle",
-      (event) => {
-        events.emit("lifecycle", event);
-      },
-    );
+    const hostPanel = this.options.hostPanel ?? createNoopHostPanelContext();
+    const actions = new ProjectActionClient(() => this.reset(), hostPanel);
     let styleLinks: HTMLLinkElement[] = [];
     let keyboardLayout: HostKeyboardLayout | undefined;
-    const context = createProjectContext({
-      manifest,
-      baseUrl: normalizedBaseUrl,
-      events,
-      reset: () => this.reset(),
-      hostPanel: this.options.hostPanel ?? createNoopHostPanelContext(),
-      subscriptions,
-    });
 
     try {
-      await applyProjectPolicy(manifest);
+      const nativeEvents = await bindNativeProjectEvents(
+        subscriptions,
+        events,
+        actions,
+        this.options.onKey,
+      );
+      const context = createProjectContext({
+        manifest,
+        baseUrl: normalizedBaseUrl,
+        events,
+        nativeEvents,
+        actions,
+      });
+
+      await applyProjectPolicy(manifest, actions);
       keyboardLayout = await createHostKeyboardLayout(this.container, manifest);
       const mountHost = createProjectMountHost(this.container);
       styleLinks = await loadStyles(
@@ -71,28 +71,29 @@ export class RemixProjectRuntime {
 
       const module = await loadProjectModule(normalizedBaseUrl, manifest);
       const unmount = await module.mount(mountHost.mountContainer, context);
+      await RemixCore.setProjectRuntimeState({ mounted: true });
       this.current = {
+        actions,
         baseUrl: normalizedBaseUrl,
         events,
-        keyListener,
         keyboardLayout,
-        lifecycleListener,
         manifest,
         styleLinks,
         subscriptions,
         ...(typeof unmount === "function" ? { unmount } : {}),
       };
-      events.emit("lifecycle", { state: "mounted" });
+      events.emit("project:lifecycle", { state: "mounted" });
       return {
         baseUrl: normalizedBaseUrl,
         manifest,
       };
     } catch (error) {
-      await keyListener.remove();
-      await lifecycleListener.remove();
+      await RemixCore.setProjectRuntimeState({ mounted: false }).catch(
+        () => undefined,
+      );
       await keyboardLayout?.dispose();
       await subscriptions.clear();
-      await clearProjectPolicy();
+      await clearProjectPolicy(actions);
       clearHostPanel(this.options.hostPanel);
       removeStyles(styleLinks);
       clearProjectMountHost(this.container);
@@ -108,7 +109,10 @@ export class RemixProjectRuntime {
     }
 
     this.current = undefined;
-    current.events.emit("lifecycle", { state: "destroyed" });
+    await RemixCore.setProjectRuntimeState({ mounted: false }).catch(
+      () => undefined,
+    );
+    current.events.emit("project:lifecycle", { state: "destroyed" });
 
     try {
       await current.unmount?.();
@@ -117,22 +121,14 @@ export class RemixProjectRuntime {
         await current.subscriptions.clear();
       } finally {
         try {
-          await current.keyListener.remove();
+          await current.keyboardLayout.dispose();
         } finally {
           try {
-            await current.lifecycleListener.remove();
+            await clearProjectPolicy(current.actions);
           } finally {
-            try {
-              await current.keyboardLayout.dispose();
-            } finally {
-              try {
-                await clearProjectPolicy();
-              } finally {
-                clearHostPanel(this.options.hostPanel);
-                removeStyles(current.styleLinks);
-                clearProjectMountHost(this.container);
-              }
-            }
+            clearHostPanel(this.options.hostPanel);
+            removeStyles(current.styleLinks);
+            clearProjectMountHost(this.container);
           }
         }
       }

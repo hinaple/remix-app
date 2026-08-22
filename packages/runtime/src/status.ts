@@ -2,7 +2,11 @@ import type { RemixEventUnsubscribe, RemixReadableStatus } from "@remixapp/sdk";
 
 import type { SubscriptionScope } from "./subscriptions.js";
 
-export interface RuntimeWritableStatus<T> extends RemixReadableStatus<T> {
+export interface RuntimeStatusChannel<T> extends RemixReadableStatus<T> {
+  on(listener: (status: T) => void): RemixEventUnsubscribe;
+}
+
+export interface RuntimeWritableStatus<T> extends RuntimeStatusChannel<T> {
   emit(): void;
 }
 
@@ -43,11 +47,10 @@ export function createMemoryStatusChannel<T>(
   };
 }
 
-export class LazyStatusChannel<T> implements RemixReadableStatus<T> {
+export class LazyStatusChannel<T> implements RuntimeStatusChannel<T> {
   private readonly listeners = new Set<(status: T) => void>();
   private listenerHandle: RuntimeListenerHandle | undefined;
-  private starting: Promise<void> | undefined;
-  private stopping: Promise<void> | undefined;
+  private transition: Promise<void> = Promise.resolve();
 
   constructor(
     private readonly subscriptions: SubscriptionScope,
@@ -60,66 +63,62 @@ export class LazyStatusChannel<T> implements RemixReadableStatus<T> {
 
   on(listener: (status: T) => void): RemixEventUnsubscribe {
     this.listeners.add(listener);
-
-    if (this.listeners.size === 1) {
-      void this.start();
-    }
+    void this.reconcile().catch((error: unknown) => {
+      console.error("Failed to start native status updates", error);
+    });
 
     return this.subscriptions.add(() => this.remove(listener));
   }
 
-  private async start(): Promise<void> {
-    if (this.listenerHandle) {
-      return;
-    }
-
-    if (this.starting) {
-      return this.starting;
-    }
-
-    this.starting = Promise.resolve().then(async () => {
-      await this.stopping;
-      this.listenerHandle = await this.options.listen((status) => {
-        for (const listener of this.listeners) {
-          listener(status);
-        }
-      });
-      await this.options.start();
-    });
-
-    try {
-      await this.starting;
-    } finally {
-      this.starting = undefined;
-    }
-  }
-
   private async remove(listener: (status: T) => void): Promise<void> {
     this.listeners.delete(listener);
-
-    if (this.listeners.size !== 0) {
-      return;
-    }
-
-    await this.stop();
+    await this.reconcile();
   }
 
-  private async stop(): Promise<void> {
-    if (this.stopping) {
-      return this.stopping;
-    }
+  private reconcile(): Promise<void> {
+    const transition = this.transition
+      .catch(() => undefined)
+      .then(() => this.applyDesiredState());
+    this.transition = transition;
+    return transition;
+  }
 
-    this.stopping = Promise.resolve().then(async () => {
-      await this.starting;
-      await this.listenerHandle?.remove();
-      this.listenerHandle = undefined;
-      await this.options.stop();
-    });
+  private async applyDesiredState(): Promise<void> {
+    while (true) {
+      if (this.listeners.size > 0 && !this.listenerHandle) {
+        const handle = await this.options.listen((status) => {
+          for (const listener of this.listeners) {
+            listener(status);
+          }
+        });
 
-    try {
-      await this.stopping;
-    } finally {
-      this.stopping = undefined;
+        try {
+          await this.options.start();
+          this.listenerHandle = handle;
+        } catch (error) {
+          try {
+            await handle.remove();
+          } finally {
+            await this.options.stop();
+          }
+          throw error;
+        }
+        continue;
+      }
+
+      if (this.listeners.size === 0 && this.listenerHandle) {
+        const handle = this.listenerHandle;
+        this.listenerHandle = undefined;
+
+        try {
+          await handle.remove();
+        } finally {
+          await this.options.stop();
+        }
+        continue;
+      }
+
+      return;
     }
   }
 }

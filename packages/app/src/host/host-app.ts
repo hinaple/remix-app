@@ -55,7 +55,7 @@ export function createHostApp(root: HTMLElement): void {
     void RemixCore.addListener("projectInstallRequested", (event) => {
       void installRequestedProject(event.path, "deploy package");
     });
-    void RemixCore.addListener("lifecycle", () => {
+    void RemixCore.addListener("project:lifecycle", () => {
       void consumeLaunchInstall(ui, installRequestedProject);
     });
   }
@@ -307,8 +307,8 @@ function formatDeviceInfo(state: RemixDevicePolicyState | undefined): string {
 function formatPolicyInfo(manifest: RemixProjectManifest): string {
   return [
     `Kiosk requested: ${yesNo(manifest.kiosk ?? false)}`,
-    `Foreground: ${yesNo(manifest.runtime?.foreground ?? false)}`,
-    `Keep CPU awake: ${yesNo(manifest.runtime?.keepCpuAwake ?? false)}`,
+    "Foreground runtime: always enabled",
+    "CPU keep-awake: always enabled",
     `Keep screen on: ${yesNo(manifest.screen?.keepOn ?? false)}`,
     `Auto brightness: ${yesNo(manifest.screen?.autoBrightness ?? false)}`,
     `Immersive: ${yesNo(manifest.screen?.immersive ?? false)}`,

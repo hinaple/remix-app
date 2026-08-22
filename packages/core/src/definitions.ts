@@ -92,28 +92,49 @@ export interface RemixPickedProjectPackage {
   path?: string;
 }
 
+export type RemixCoreMqttConnectionState =
+  | "connecting"
+  | "connected"
+  | "reconnecting"
+  | "disconnected";
+
+export interface RemixCoreMqttStatus {
+  connection: string;
+  state: RemixCoreMqttConnectionState;
+  revision: number;
+  reason?: string;
+}
+
+export interface RemixCoreMqttStatuses {
+  statuses: RemixCoreMqttStatus[];
+}
+
+export interface RemixCoreMqttMessageEvent {
+  connection: string;
+  topic: string;
+  payloadBase64: string;
+  qos: 0 | 1 | 2;
+  retained: boolean;
+  duplicate: boolean;
+  receivedAt: number;
+}
+
+export interface RemixCoreNativeActionRequest {
+  requestId: string;
+  type: string;
+  args: Record<string, unknown>;
+}
+
 export interface RemixCorePlugin {
-  wakeScreen(): Promise<void>;
-  setKeepScreenOn(options: { enabled: boolean }): Promise<void>;
-  setAutoBrightness(options: { enabled: boolean }): Promise<void>;
-  setScreenBrightness(options: { brightness: number }): Promise<void>;
-  setScreenTimeout(options: { timeout?: number | null }): Promise<void>;
   setSystemUiMode(options: {
     immersive: boolean;
     hideSystemBars: boolean;
-  }): Promise<void>;
-  setScreenOrientation(options: {
-    orientation: RemixScreenOrientation;
   }): Promise<void>;
   setSoftInputMode(options: {
     adjust: RemixKeyboardAdjust;
     state: RemixKeyboardState;
   }): Promise<void>;
-  setForegroundService(options: { enabled: boolean }): Promise<void>;
-  setKeepCpuAwake(options: { enabled: boolean }): Promise<void>;
   setKioskMode(options: { enabled: boolean }): Promise<RemixKioskResult>;
-  captureBack(options: { enabled: boolean }): Promise<void>;
-  captureKeys(options: { keys: RemixCoreKeyEvent["key"][] }): Promise<void>;
   getDevicePolicyState(): Promise<RemixDevicePolicyState>;
   getBatteryStatus(): Promise<RemixBatteryStatus>;
   getNetworkStatus(): Promise<RemixNetworkStatus>;
@@ -128,8 +149,20 @@ export interface RemixCorePlugin {
   startKeyboardStatusUpdates(): Promise<void>;
   stopKeyboardStatusUpdates(): Promise<void>;
   getMediaVolume(): Promise<RemixMediaVolume>;
-  setMediaVolume(options: { volume: number }): Promise<void>;
-  vibrate(options?: { duration?: number }): Promise<void>;
+  executeAction(options: {
+    type: string;
+    args?: Record<string, unknown>;
+  }): Promise<void>;
+  setProjectRuntimeState(options: { mounted: boolean }): Promise<void>;
+  completeWebAction(options: {
+    requestId: string;
+    status: "completed" | "failed";
+    error?: string;
+  }): Promise<void>;
+  getMqttStatus(options: {
+    connection: string;
+  }): Promise<RemixCoreMqttStatus>;
+  getMqttStatuses(): Promise<RemixCoreMqttStatuses>;
   installProjectPackage(options: {
     path: string;
   }): Promise<RemixInstallProjectPackageResult>;
@@ -138,31 +171,43 @@ export interface RemixCorePlugin {
   pickProjectPackage(): Promise<RemixPickedProjectPackage>;
   exitApp(): Promise<void>;
   addListener(
-    eventName: "key",
+    eventName: "device:key",
     listener: (event: RemixCoreKeyEvent) => void,
   ): Promise<PluginListenerHandle>;
   addListener(
-    eventName: "lifecycle",
+    eventName: "project:lifecycle",
     listener: (event: RemixCoreLifecycleEvent) => void,
   ): Promise<PluginListenerHandle>;
   addListener(
-    eventName: "batteryStatus",
+    eventName: "device:status:battery",
     listener: (event: RemixBatteryStatus) => void,
   ): Promise<PluginListenerHandle>;
   addListener(
-    eventName: "networkStatus",
+    eventName: "device:status:network",
     listener: (event: RemixNetworkStatus) => void,
   ): Promise<PluginListenerHandle>;
   addListener(
-    eventName: "screenStatus",
+    eventName: "device:status:screen",
     listener: (event: RemixScreenStatus) => void,
   ): Promise<PluginListenerHandle>;
   addListener(
-    eventName: "keyboardStatus",
+    eventName: "device:status:keyboard",
     listener: (event: RemixKeyboardStatus) => void,
   ): Promise<PluginListenerHandle>;
   addListener(
     eventName: "projectInstallRequested",
     listener: (event: RemixProjectInstallRequested) => void,
+  ): Promise<PluginListenerHandle>;
+  addListener(
+    eventName: "mqtt:status",
+    listener: (event: RemixCoreMqttStatus) => void,
+  ): Promise<PluginListenerHandle>;
+  addListener(
+    eventName: "mqtt:message",
+    listener: (event: RemixCoreMqttMessageEvent) => void,
+  ): Promise<PluginListenerHandle>;
+  addListener(
+    eventName: "nativeActionRequested",
+    listener: (event: RemixCoreNativeActionRequest) => void,
   ): Promise<PluginListenerHandle>;
 }

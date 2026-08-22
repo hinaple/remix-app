@@ -43,7 +43,7 @@ class CssKeyboardLayout implements HostKeyboardLayout {
 
   async start(): Promise<void> {
     this.listenerHandle = await RemixCore.addListener(
-      "keyboardStatus",
+      "device:status:keyboard",
       (status) => {
         this.apply(status);
       },

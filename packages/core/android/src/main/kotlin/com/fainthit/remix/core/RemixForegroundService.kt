@@ -10,26 +10,55 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
+import com.fainthit.remix.core.mqtt.RemixMqttRuntime
 
 class RemixForegroundService : Service() {
+    private var cpuWakeLock: PowerManager.WakeLock? = null
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        acquireCpuWakeLock()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startRuntimeForeground()
+        RemixMqttRuntime.reload(applicationContext)
+
         return START_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
+        RemixMqttRuntime.stop()
+        releaseCpuWakeLock()
         stopForeground(STOP_FOREGROUND_REMOVE)
         super.onDestroy()
+    }
+
+    private fun acquireCpuWakeLock() {
+        if (cpuWakeLock?.isHeld == true) {
+            return
+        }
+
+        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        cpuWakeLock = powerManager.newWakeLock(
+            PowerManager.PARTIAL_WAKE_LOCK,
+            "remixApp:runtimeCpu",
+        ).apply {
+            setReferenceCounted(false)
+            acquire()
+        }
+    }
+
+    private fun releaseCpuWakeLock() {
+        cpuWakeLock?.takeIf { it.isHeld }?.release()
+        cpuWakeLock = null
     }
 
     private fun startRuntimeForeground() {
@@ -87,15 +116,20 @@ class RemixForegroundService : Service() {
     }
 
     companion object {
-        private const val ACTION_START = "com.fainthit.remix.core.action.START_FOREGROUND"
+        private const val ACTION_SYNC = "com.fainthit.remix.core.action.SYNC_FOREGROUND"
         private const val CHANNEL_ID = "remixapp-runtime"
         private const val NOTIFICATION_ID = 9001
 
         fun start(context: Context) {
-            val intent = Intent(context, RemixForegroundService::class.java).apply {
-                action = ACTION_START
+            val applicationContext = context.applicationContext
+            val intent = Intent(applicationContext, RemixForegroundService::class.java).apply {
+                action = ACTION_SYNC
             }
-            ContextCompat.startForegroundService(context, intent)
+            ContextCompat.startForegroundService(applicationContext, intent)
+        }
+
+        fun syncActiveProject(context: Context) {
+            start(context)
         }
 
         fun stop(context: Context) {

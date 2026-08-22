@@ -16,12 +16,10 @@ export interface RemixDevHostController {
 }
 
 export type DeviceState = {
-  foreground: boolean;
   keepScreenOn: boolean;
   autoBrightness: boolean;
   brightness: number;
   screenTimeout: number | undefined;
-  keepCpuAwake: boolean;
   orientation: RemixScreenOrientation;
   capturedKeys: Set<string>;
   captureBack: boolean;

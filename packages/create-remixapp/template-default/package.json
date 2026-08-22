@@ -1,16 +1,19 @@
 {
-  "name": "@remixapp/template",
+  "name": "remixapp-project",
   "version": "0.1.0",
+  "private": true,
+  "license": "0BSD",
   "type": "module",
   "scripts": {
     "dev": "remix-cli dev",
     "build": "remix-cli build",
     "build:unpack": "remix-cli build --unpack",
+    "deploy": "remix-cli deploy",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
-    "@remixapp/cli": "workspace:*",
-    "@remixapp/sdk": "workspace:*",
+    "@remixapp/cli": "^0.2.0",
+    "@remixapp/sdk": "^0.2.0",
     "typescript": "^5.8.3",
     "vite": "^7.0.0"
   }

@@ -50,10 +50,6 @@ export const mount: RemixAppMount = (container, context) => {
 
   const runtimePanel = createPanel("Runtime controls");
   runtimePanel.body.append(
-    createButton("Enable keep CPU awake", async () => {
-      await context.device.runtime.keepCpuAwake(true);
-      setStatus("CPU keep-awake enabled");
-    }),
     createButton("Set volume 50%", async () => {
       await context.device.audio.setVolume(0.5);
       const volume = await context.device.audio.getVolume();
@@ -143,24 +139,24 @@ export const mount: RemixAppMount = (container, context) => {
   ]);
 
   const unsubscribers: Unsubscribe[] = [
-    context.device.status.battery.on((value) => {
+    context.events.on("device:status:battery", (value) => {
       batteryRow.set(formatBattery(value));
       context.host.panel.status.setText("example-mounted", "Battery updated");
     }),
-    context.device.status.network.on((value) => {
+    context.events.on("device:status:network", (value) => {
       networkRow.set(formatNetwork(value));
     }),
-    context.device.status.screen.on((value) => {
+    context.events.on("device:status:screen", (value) => {
       screenRow.set(formatScreen(value));
     }),
-    context.device.keyboard.on((value) => {
+    context.events.on("device:status:keyboard", (value) => {
       keyboardRow.set(formatKeyboard(value));
     }),
-    context.events.on("key", (event) => {
+    context.events.on("device:key", (event) => {
       eventRow.set(formatKeyEvent(event));
       context.host.panel.status.setText("example-event", formatKeyEvent(event));
     }),
-    context.events.on("lifecycle", (event) => {
+    context.events.on("project:lifecycle", (event) => {
       eventRow.set(formatLifecycleEvent(event));
       context.host.panel.status.setText(
         "example-event",

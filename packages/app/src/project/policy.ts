@@ -6,6 +6,8 @@ import type {
   RemixProjectManifest,
 } from "@remixapp/sdk";
 
+import type { ProjectActionClient } from "./action-client.js";
+
 export interface HostKeyboardPolicy {
   adjust: RemixKeyboardAdjust;
   nativeAdjust: boolean;
@@ -14,21 +16,22 @@ export interface HostKeyboardPolicy {
 
 export async function applyProjectPolicy(
   manifest: RemixProjectManifest,
+  actions: ProjectActionClient,
 ): Promise<void> {
   const kiosk = manifest.kiosk ?? true;
   const keyboard = resolveHostKeyboardPolicy(manifest);
 
-  await RemixCore.setAutoBrightness({
+  await actions.invoke("device.screen.setAutoBrightness", {
     enabled: manifest.screen?.autoBrightness ?? false,
   });
-  await RemixCore.setKeepScreenOn({
+  await actions.invoke("device.screen.setKeepOn", {
     enabled: manifest.screen?.keepOn ?? false,
   });
   await RemixCore.setSystemUiMode({
     immersive: manifest.screen?.immersive ?? kiosk,
     hideSystemBars: manifest.screen?.hideSystemBars ?? kiosk,
   });
-  await RemixCore.setScreenOrientation({
+  await actions.invoke("device.screen.setOrientation", {
     orientation: manifest.screen?.orientation ?? "portrait",
   });
   await RemixCore.setSoftInputMode({
@@ -36,36 +39,36 @@ export async function applyProjectPolicy(
     state: keyboard.state,
   });
   if (manifest.screen?.timeout !== undefined) {
-    await RemixCore.setScreenTimeout({ timeout: manifest.screen.timeout });
+    await actions.invoke("device.screen.setTimeout", {
+      timeout: manifest.screen.timeout,
+    });
   }
-  await RemixCore.setForegroundService({
-    enabled: manifest.runtime?.foreground ?? true,
+  await actions.invoke("device.input.captureBack", {
+    enabled: manifest.input?.captureBack ?? true,
   });
-  await RemixCore.setKeepCpuAwake({
-    enabled: manifest.runtime?.keepCpuAwake ?? false,
-  });
-  await RemixCore.captureBack({ enabled: manifest.input?.captureBack ?? true });
-  await RemixCore.captureKeys({
+  await actions.invoke("device.input.captureKeys", {
     keys: withHostAdminKeys(manifest.input?.capturedKeys ?? []),
   });
   await RemixCore.setKioskMode({ enabled: kiosk });
 }
 
-export async function clearProjectPolicy(): Promise<void> {
+export async function clearProjectPolicy(
+  actions: ProjectActionClient,
+): Promise<void> {
   await RemixCore.setKioskMode({ enabled: false });
-  await RemixCore.captureBack({ enabled: false });
-  await RemixCore.captureKeys({ keys: [] });
-  await RemixCore.setKeepCpuAwake({ enabled: false });
-  await RemixCore.setForegroundService({ enabled: false });
-  await RemixCore.setScreenOrientation({ orientation: "unspecified" });
+  await actions.invoke("device.input.captureBack", { enabled: false });
+  await actions.invoke("device.input.captureKeys", { keys: [] });
+  await actions.invoke("device.screen.setOrientation", {
+    orientation: "unspecified",
+  });
   await RemixCore.setSoftInputMode({
     adjust: "nothing",
     state: "unspecified",
   });
-  await RemixCore.setScreenTimeout({ timeout: null });
+  await actions.invoke("device.screen.setTimeout", { timeout: null });
   await RemixCore.setSystemUiMode({ immersive: false, hideSystemBars: false });
-  await RemixCore.setKeepScreenOn({ enabled: false });
-  await RemixCore.setAutoBrightness({ enabled: false });
+  await actions.invoke("device.screen.setKeepOn", { enabled: false });
+  await actions.invoke("device.screen.setAutoBrightness", { enabled: false });
 }
 
 function withHostAdminKeys(

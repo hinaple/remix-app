@@ -1,6 +1,8 @@
 {
   "name": "@remixapp/sdk",
-  "version": "0.1.0",
+  "version": "0.2.0",
+  "description": "TypeScript SDK and project contracts for remixApp",
+  "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -14,9 +16,25 @@
       "import": "./dist/config.js"
     }
   },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hinaple/remix-app.git",
+    "directory": "packages/sdk"
+  },
+  "homepage": "https://github.com/hinaple/remix-app#readme",
+  "bugs": {
+    "url": "https://github.com/hinaple/remix-app/issues"
+  },
   "sideEffects": false,
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "prepack": "pnpm build",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "peerDependencies": {

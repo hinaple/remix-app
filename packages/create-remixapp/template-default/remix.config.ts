@@ -1,15 +1,11 @@
 import { defineConfig } from "@remixapp/sdk/config";
 
 export default defineConfig({
-  name: "template",
-  version: "0.1.0",
+  name: __REMIXAPP_NAME__,
+  version: __REMIXAPP_VERSION__,
   entry: "src/index.ts",
   styles: ["src/style.css"],
   kiosk: true,
-  runtime: {
-    foreground: true,
-    keepCpuAwake: true,
-  },
   screen: {
     keepOn: true,
     immersive: true,

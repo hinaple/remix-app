@@ -1,29 +1,48 @@
 {
   "name": "remixapp",
-  "version": "0.1.0",
+  "version": "0.2.0",
+  "private": true,
+  "license": "Apache-2.0",
   "type": "module",
   "packageManager": "pnpm@10.13.1",
   "scripts": {
     "build": "pnpm -r --if-present build",
     "typecheck": "pnpm -r --if-present typecheck",
     "dev:app": "pnpm --filter @remixapp/app dev",
-    "dev:template": "pnpm --filter @remixapp/template dev",
+    "dev:example": "pnpm --filter remixapp-example dev",
     "build:app": "pnpm --filter @remixapp/app build",
     "build:cli": "pnpm --filter @remixapp/cli build",
+    "build:create": "pnpm --filter @remixapp/create build",
     "build:core": "pnpm --filter @remixapp/core build",
     "build:runtime": "pnpm --filter @remixapp/runtime build",
     "build:sdk": "pnpm --filter @remixapp/sdk build",
-    "build:template": "pnpm --filter @remixapp/template build",
-    "build:template:unpack": "pnpm --filter @remixapp/template build -- --unpack",
+    "build:example": "pnpm --filter remixapp-example build",
+    "build:example:unpack": "pnpm --filter remixapp-example build:unpack",
     "cap:sync": "pnpm --filter @remixapp/app cap:sync",
     "android": "pnpm --filter @remixapp/app android",
     "android:dev": "node scripts/android-dev.mjs",
     "android:build": "pnpm --filter @remixapp/app android:build",
     "android:install": "node scripts/install-android-app.mjs",
     "android:install:all": "node scripts/install-android-app.mjs --all",
-    "android:update": "pnpm run build:app & pnpm cap:sync & pnpm run android:build & pnpm run android:install"
+    "android:update": "pnpm run build:app & pnpm cap:sync & pnpm run android:build & pnpm run android:install",
+    "changeset": "changeset",
+    "changeset:status": "changeset status",
+    "release:sync": "node scripts/release-versions.mjs sync",
+    "release:pack": "node scripts/release-pack.mjs",
+    "release:manifests": "node scripts/verify-publish-manifests.mjs",
+    "release:check": "node scripts/release-check.mjs",
+    "release:version": "changeset version && node scripts/release-versions.mjs sync",
+    "release:publish": "pnpm release:check && changeset publish"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.31.1",
     "typescript": "^5.8.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "brace-expansion@2": "2.1.4",
+      "nanoid@3.3.17": "3.3.18",
+      "postcss@8": "8.5.23"
+    }
   }
 }

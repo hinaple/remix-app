@@ -1,6 +1,7 @@
 import type { RemixDeviceContext } from './device.js'
 import type { RemixEventContext } from './events.js'
 import type { RemixHostContext } from './host.js'
+import type { RemixMqttContext } from './mqtt.js'
 import type { RemixProjectContext } from './project.js'
 import type { RemixResourceContext } from './resources.js'
 
@@ -20,8 +21,10 @@ export type RemixAppMount = (
  * Optional cleanup function returned by `RemixAppMount`.
  *
  * The Host calls this when the project is unloaded or replaced. Project code
- * should remove DOM nodes, unsubscribe events, and release project-owned
- * resources here.
+ * should release resources it created outside the Host context, such as
+ * global DOM listeners, timers, and external client subscriptions. The Host
+ * automatically clears context-owned event and status subscriptions when the
+ * project is unmounted.
  */
 export type RemixAppUnmount = () => void | Promise<void>
 
@@ -52,6 +55,11 @@ export interface RemixAppContext {
    * Host-provided event subscription API.
    */
   events: RemixEventContext
+
+  /**
+   * Native MQTT commands for connections declared in the project manifest.
+   */
+  mqtt: RemixMqttContext
 
   /**
    * Host UI and administration controls exposed to project code.

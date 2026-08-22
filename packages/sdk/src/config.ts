@@ -1,6 +1,12 @@
 import type { UserConfigExport as ViteConfig } from "vite";
 
 import type { RemixKey } from "./keys.js";
+import type { RemixMqttConfig, RemixMqttProjectConfig } from "./mqtt.js";
+import type {
+  RemixNativeEventsConfig,
+  RemixNativeEventsProjectConfig,
+} from "./native-events.js";
+import type { RemixProjectBuildInfo } from "./version.js";
 
 /**
  * Build-time configuration for a remixApp project.
@@ -46,11 +52,6 @@ export interface RemixConfig {
   kiosk?: boolean;
 
   /**
-   * Runtime policy requested from the Host APK when the project starts.
-   */
-  runtime?: RemixRuntimePolicy;
-
-  /**
    * Screen policy requested from the Host APK when the project starts.
    */
   screen?: RemixScreenPolicy;
@@ -59,6 +60,14 @@ export interface RemixConfig {
    * Hardware input policy requested from the Host APK when the project starts.
    */
   input?: RemixInputPolicy;
+
+  /**
+   * Native MQTT connections and fixed topic subscriptions.
+   */
+  mqtt?: RemixMqttConfig;
+
+  /** Native rules evaluated while the mounted project Activity is inactive. */
+  nativeEvents?: RemixNativeEventsConfig;
 
   /**
    * Vite configuration merged into the CLI's internal build configuration.
@@ -79,6 +88,15 @@ export interface RemixConfig {
  * paths.
  */
 export interface RemixProjectManifest {
+  /** Version of the `.remixprj` archive and manifest layout. */
+  formatVersion: number;
+
+  /** Version of the Host context, event, and action API required by the project. */
+  runtimeApiVersion: number;
+
+  /** Tool versions recorded for diagnostics. */
+  builtWith?: RemixProjectBuildInfo;
+
   /**
    * Project name copied from the source config.
    */
@@ -105,11 +123,6 @@ export interface RemixProjectManifest {
   kiosk?: boolean;
 
   /**
-   * Runtime policy applied by the Host APK during project startup.
-   */
-  runtime?: RemixRuntimePolicy;
-
-  /**
    * Screen policy applied by the Host APK during project startup.
    */
   screen?: RemixScreenPolicy;
@@ -118,24 +131,14 @@ export interface RemixProjectManifest {
    * Hardware input policy applied by the Host APK during project startup.
    */
   input?: RemixInputPolicy;
-}
-
-/**
- * Fixed runtime policy requested by a project.
- */
-export interface RemixRuntimePolicy {
-  /**
-   * Requests foreground-oriented runtime behavior from the Host APK.
-   *
-   * The exact Android implementation belongs to the Host and may evolve with
-   * device policy requirements.
-   */
-  foreground?: boolean;
 
   /**
-   * Requests that the Host keep the CPU awake while the project is active.
+   * Normalized MQTT configuration applied by the native Host runtime.
    */
-  keepCpuAwake?: boolean;
+  mqtt?: RemixMqttProjectConfig;
+
+  /** Normalized native event rules executed by the Android Host. */
+  nativeEvents?: RemixNativeEventsProjectConfig;
 }
 
 /**

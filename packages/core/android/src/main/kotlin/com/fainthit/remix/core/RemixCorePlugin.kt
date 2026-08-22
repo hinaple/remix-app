@@ -9,8 +9,17 @@ import android.content.IntentFilter
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
+import android.util.Base64
+import android.util.Log
 import android.view.KeyEvent
 import androidx.activity.result.ActivityResult
+import com.fainthit.remix.core.mqtt.RemixMqttMessage
+import com.fainthit.remix.core.mqtt.RemixMqttRuntime
+import com.fainthit.remix.core.mqtt.RemixMqttStatus
+import com.fainthit.remix.core.actions.RemixNativeActionRegistry
+import com.fainthit.remix.core.nativeevents.RemixNativeEventConfigLoader
+import com.fainthit.remix.core.nativeevents.RemixNativeEventEngine
+import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
@@ -26,64 +35,101 @@ class RemixCorePlugin : Plugin() {
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
     private var screenReceiver: BroadcastReceiver? = null
     private var keyboardStatusUpdateCount = 0
+    private var batteryStatusRequestedByJs = false
+    private var networkStatusRequestedByJs = false
+    private var screenStatusRequestedByJs = false
+    private var batteryStatusRequiredByNativeEvents = false
+    private var networkStatusRequiredByNativeEvents = false
+    private var screenStatusRequiredByNativeEvents = false
+    private var keyboardStatusRequiredByNativeEvents = false
+    private lateinit var nativeActions: RemixNativeActionRegistry
+    private lateinit var nativeEventEngine: RemixNativeEventEngine
+    private val mqttListener = object : RemixMqttRuntime.Listener {
+        override fun onStatus(status: RemixMqttStatus) {
+            val payload = mqttStatusObject(status)
+            nativeEventEngine.onEvent(RemixEventNames.MQTT_STATUS, payload)
+            notifyListeners(RemixEventNames.MQTT_STATUS, payload)
+        }
+
+        override fun onMessage(message: RemixMqttMessage) {
+            val payload = mqttMessageObject(message)
+            nativeEventEngine.onEvent(RemixEventNames.MQTT_MESSAGE, payload)
+            notifyListeners(RemixEventNames.MQTT_MESSAGE, payload)
+        }
+    }
 
     override fun load() {
         implementation = RemixCore(activity)
+        nativeActions = RemixNativeActionRegistry(
+            core = implementation,
+            setCaptureBack = { captureBack = it },
+            setCapturedKeys = { capturedKeys = it },
+            onScreenChanged = {
+                activity.runOnUiThread { notifyScreenStatus() }
+            },
+        )
+        nativeEventEngine = RemixNativeEventEngine(
+            actions = nativeActions,
+            listener = object : RemixNativeEventEngine.Listener {
+                override fun onWebActionRequested(request: RemixNativeEventEngine.WebActionRequest) {
+                    activity.runOnUiThread { emitNativeActionRequest(request) }
+                }
+
+                override fun onActionFailed(type: String, error: Throwable) {
+                    Log.e(TAG, "Native event action failed: $type", error)
+                }
+            },
+        )
+        reloadNativeEventConfig()
         activePlugin = this
         exitAppScheduled = false
+        RemixMqttRuntime.addListener(mqttListener)
+        RemixForegroundService.syncActiveProject(context)
     }
 
     @PluginMethod
-    fun wakeScreen(call: PluginCall) {
-        implementation.wakeScreen()
-        call.resolve()
-    }
-
-    @PluginMethod
-    fun setKeepScreenOn(call: PluginCall) {
-        implementation.setKeepScreenOn(call.getBoolean("enabled", false) == true)
-        emitScreenStatusIfActive()
-        call.resolve()
-    }
-
-    @PluginMethod
-    fun setAutoBrightness(call: PluginCall) {
-        try {
-            implementation.setAutoBrightness(call.getBoolean("enabled", false) == true)
-            emitScreenStatusIfActive()
-            call.resolve()
-        } catch (error: Exception) {
-            call.reject("Failed to change automatic brightness state", error)
-        }
-    }
-
-    @PluginMethod
-    fun setScreenBrightness(call: PluginCall) {
-        val brightness = call.getDouble("brightness")
-
-        if (brightness == null) {
-            call.reject("Screen brightness is required")
+    fun executeAction(call: PluginCall) {
+        val type = call.getString("type")
+        if (type.isNullOrBlank()) {
+            call.reject("Action type is required")
             return
         }
 
-        try {
-            implementation.setScreenBrightness(brightness.toFloat())
-            emitScreenStatusIfActive()
-            call.resolve()
-        } catch (error: Exception) {
-            call.reject("Failed to change screen brightness", error)
+        nativeActions.execute(type, call.getObject("args") ?: JSObject()) { error ->
+            if (error == null) {
+                call.resolve()
+            } else {
+                call.reject(
+                    "Failed to execute action $type",
+                    error as? Exception ?: Exception(error),
+                )
+            }
         }
     }
 
     @PluginMethod
-    fun setScreenTimeout(call: PluginCall) {
-        try {
-            implementation.setScreenTimeout(call.getInt("timeout"))
-            emitScreenStatusIfActive()
-            call.resolve()
-        } catch (error: Exception) {
-            call.reject("Failed to change screen timeout", error)
+    fun setProjectRuntimeState(call: PluginCall) {
+        val mounted = call.getBoolean("mounted", false) == true
+        if (mounted) reloadNativeEventConfig()
+        nativeEventEngine.setProjectMounted(mounted)
+        syncNativeEventSources(mounted)
+        call.resolve()
+    }
+
+    @PluginMethod
+    fun completeWebAction(call: PluginCall) {
+        val requestId = call.getString("requestId")
+        if (requestId.isNullOrBlank()) {
+            call.reject("Web action requestId is required")
+            return
         }
+        val error = if (call.getString("status") == "failed") {
+            call.getString("error") ?: "WebView action failed"
+        } else {
+            null
+        }
+        nativeEventEngine.completeWebAction(requestId, error)
+        call.resolve()
     }
 
     @PluginMethod
@@ -92,13 +138,6 @@ class RemixCorePlugin : Plugin() {
             immersive = call.getBoolean("immersive", false) == true,
             hideSystemBars = call.getBoolean("hideSystemBars", false) == true,
         )
-        call.resolve()
-    }
-
-    @PluginMethod
-    fun setScreenOrientation(call: PluginCall) {
-        implementation.setScreenOrientation(call.getString("orientation", "portrait") ?: "portrait")
-        emitScreenStatusIfActive()
         call.resolve()
     }
 
@@ -113,22 +152,6 @@ class RemixCorePlugin : Plugin() {
     }
 
     @PluginMethod
-    fun setForegroundService(call: PluginCall) {
-        try {
-            implementation.setForegroundService(call.getBoolean("enabled", false) == true)
-            call.resolve()
-        } catch (error: Exception) {
-            call.reject("Failed to change foreground service state", error)
-        }
-    }
-
-    @PluginMethod
-    fun setKeepCpuAwake(call: PluginCall) {
-        implementation.setKeepCpuAwake(call.getBoolean("enabled", false) == true)
-        call.resolve()
-    }
-
-    @PluginMethod
     fun setKioskMode(call: PluginCall) {
         try {
             val state = implementation.setKioskMode(call.getBoolean("enabled", false) == true)
@@ -139,27 +162,6 @@ class RemixCorePlugin : Plugin() {
         } catch (error: Exception) {
             call.reject("Failed to change kiosk mode", error)
         }
-    }
-
-    @PluginMethod
-    fun captureBack(call: PluginCall) {
-        captureBack = call.getBoolean("enabled", false) == true
-        call.resolve()
-    }
-
-    @PluginMethod
-    fun captureKeys(call: PluginCall) {
-        val values = mutableSetOf<String>()
-        val keys = call.getArray("keys")
-
-        if (keys != null) {
-            for (index in 0 until keys.length()) {
-                keys.optString(index)?.takeIf { it.isNotEmpty() }?.let(values::add)
-            }
-        }
-
-        capturedKeys = values
-        call.resolve()
     }
 
     @PluginMethod
@@ -195,130 +197,53 @@ class RemixCorePlugin : Plugin() {
 
     @PluginMethod
     fun startBatteryStatusUpdates(call: PluginCall) {
-        if (batteryReceiver == null) {
-            batteryReceiver = object : BroadcastReceiver() {
-                override fun onReceive(context: Context, intent: Intent) {
-                    emitBatteryStatus()
-                }
-            }
-            context.registerReceiver(
-                batteryReceiver,
-                IntentFilter(Intent.ACTION_BATTERY_CHANGED),
-            )
-        }
-
+        batteryStatusRequestedByJs = true
+        ensureBatteryStatusUpdates()
         emitBatteryStatus()
         call.resolve()
     }
 
     @PluginMethod
     fun stopBatteryStatusUpdates(call: PluginCall) {
-        batteryReceiver?.let {
-            try {
-                context.unregisterReceiver(it)
-            } catch (_: IllegalArgumentException) {
-                // Already unregistered.
-            }
-        }
-        batteryReceiver = null
+        batteryStatusRequestedByJs = false
+        if (!batteryStatusRequiredByNativeEvents) stopBatteryStatusUpdatesSilently()
         call.resolve()
     }
 
     @PluginMethod
     fun startNetworkStatusUpdates(call: PluginCall) {
-        if (networkCallback == null) {
-            val connectivityManager =
-                context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-
-            networkCallback = object : ConnectivityManager.NetworkCallback() {
-                override fun onAvailable(network: Network) {
-                    emitNetworkStatus()
-                }
-
-                override fun onLost(network: Network) {
-                    emitNetworkStatus()
-                }
-
-                override fun onCapabilitiesChanged(
-                    network: Network,
-                    networkCapabilities: NetworkCapabilities,
-                ) {
-                    emitNetworkStatus()
-                }
-            }
-
-            connectivityManager.registerDefaultNetworkCallback(networkCallback!!)
-        }
-
+        networkStatusRequestedByJs = true
+        ensureNetworkStatusUpdates()
         emitNetworkStatus()
         call.resolve()
     }
 
     @PluginMethod
     fun stopNetworkStatusUpdates(call: PluginCall) {
-        networkCallback?.let {
-            try {
-                val connectivityManager =
-                    context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-                connectivityManager.unregisterNetworkCallback(it)
-            } catch (_: IllegalArgumentException) {
-                // Already unregistered.
-            }
-        }
-        networkCallback = null
+        networkStatusRequestedByJs = false
+        if (!networkStatusRequiredByNativeEvents) stopNetworkStatusUpdatesSilently()
         call.resolve()
     }
 
     @PluginMethod
     fun startScreenStatusUpdates(call: PluginCall) {
-        if (screenReceiver == null) {
-            screenReceiver = object : BroadcastReceiver() {
-                override fun onReceive(context: Context, intent: Intent) {
-                    emitScreenStatus()
-                }
-            }
-            context.registerReceiver(
-                screenReceiver,
-                IntentFilter().apply {
-                    addAction(Intent.ACTION_SCREEN_ON)
-                    addAction(Intent.ACTION_SCREEN_OFF)
-                    addAction(Intent.ACTION_USER_PRESENT)
-                },
-            )
-        }
-
+        screenStatusRequestedByJs = true
+        ensureScreenStatusUpdates()
         emitScreenStatus()
         call.resolve()
     }
 
     @PluginMethod
     fun stopScreenStatusUpdates(call: PluginCall) {
-        screenReceiver?.let {
-            try {
-                context.unregisterReceiver(it)
-            } catch (_: IllegalArgumentException) {
-                // Already unregistered.
-            }
-        }
-        screenReceiver = null
+        screenStatusRequestedByJs = false
+        if (!screenStatusRequiredByNativeEvents) stopScreenStatusUpdatesSilently()
         call.resolve()
     }
 
     @PluginMethod
     fun startKeyboardStatusUpdates(call: PluginCall) {
         keyboardStatusUpdateCount += 1
-
-        if (keyboardStatusUpdateCount == 1) {
-            activity.runOnUiThread {
-                val decorView = activity.window.decorView
-                ViewCompat.setOnApplyWindowInsetsListener(decorView) { _, insets ->
-                    emitKeyboardStatus()
-                    insets
-                }
-                ViewCompat.requestApplyInsets(decorView)
-            }
-        }
-
+        ensureKeyboardStatusUpdates()
         emitKeyboardStatus()
         call.resolve()
     }
@@ -327,7 +252,7 @@ class RemixCorePlugin : Plugin() {
     fun stopKeyboardStatusUpdates(call: PluginCall) {
         keyboardStatusUpdateCount = (keyboardStatusUpdateCount - 1).coerceAtLeast(0)
 
-        if (keyboardStatusUpdateCount == 0) {
+        if (keyboardStatusUpdateCount == 0 && !keyboardStatusRequiredByNativeEvents) {
             activity.runOnUiThread {
                 ViewCompat.setOnApplyWindowInsetsListener(activity.window.decorView, null)
             }
@@ -345,30 +270,31 @@ class RemixCorePlugin : Plugin() {
     }
 
     @PluginMethod
-    fun setMediaVolume(call: PluginCall) {
-        val volume = call.getDouble("volume")
+    fun getMqttStatus(call: PluginCall) {
+        val connection = call.getString("connection")
 
-        if (volume == null) {
-            call.reject("Media volume is required")
+        if (connection.isNullOrBlank()) {
+            call.reject("MQTT connection name is required")
             return
         }
 
-        try {
-            implementation.setMediaVolume(volume.toFloat())
-            call.resolve()
-        } catch (error: Exception) {
-            call.reject("Failed to change media volume", error)
+        RemixMqttRuntime.reload(context)
+        val status = RemixMqttRuntime.getStatus(connection)
+
+        if (status == null) {
+            call.reject("Unknown MQTT connection: $connection")
+            return
         }
+
+        call.resolve(mqttStatusObject(status))
     }
 
     @PluginMethod
-    fun vibrate(call: PluginCall) {
-        try {
-            implementation.vibrate((call.getInt("duration", 250) ?: 250).toLong())
-            call.resolve()
-        } catch (error: Exception) {
-            call.reject("Failed to trigger vibration", error)
-        }
+    fun getMqttStatuses(call: PluginCall) {
+        RemixMqttRuntime.reload(context)
+        call.resolve(JSObject().apply {
+            put("statuses", JSArray(RemixMqttRuntime.getStatuses().map(::mqttStatusObject)))
+        })
     }
 
     @PluginMethod
@@ -472,6 +398,7 @@ class RemixCorePlugin : Plugin() {
     }
 
     override fun handleOnResume() {
+        nativeEventEngine.setActivityResumed(true)
         implementation.applySystemUiMode()
         emitScreenStatusIfActive()
         emitKeyboardStatusIfActive()
@@ -481,15 +408,18 @@ class RemixCorePlugin : Plugin() {
     }
 
     override fun handleOnPause() {
+        nativeEventEngine.setActivityResumed(false)
         emitLifecycle("paused")
         super.handleOnPause()
     }
 
     override fun handleOnDestroy() {
+        nativeEventEngine.close()
         stopBatteryStatusUpdatesSilently()
         stopNetworkStatusUpdatesSilently()
         stopScreenStatusUpdatesSilently()
         stopKeyboardStatusUpdatesSilently()
+        RemixMqttRuntime.removeListener(mqttListener)
         implementation.destroy()
         if (activePlugin === this) {
             activePlugin = null
@@ -498,32 +428,51 @@ class RemixCorePlugin : Plugin() {
     }
 
     private fun emitKey(key: String, event: KeyEvent) {
-        notifyListeners("key", JSObject().apply {
+        val payload = JSObject().apply {
             put("key", key)
             put("action", if (event.action == KeyEvent.ACTION_DOWN) "down" else "up")
-        })
+        }
+        nativeEventEngine.onEvent(RemixEventNames.DEVICE_KEY, payload)
+        notifyListeners(RemixEventNames.DEVICE_KEY, payload)
     }
 
     private fun emitBatteryStatus() {
-        notifyListeners("batteryStatus", batteryStatusObject(implementation.getBatteryStatus()))
+        val payload = batteryStatusObject(implementation.getBatteryStatus())
+        nativeEventEngine.onEvent(RemixEventNames.DEVICE_STATUS_BATTERY, payload)
+        notifyListeners(RemixEventNames.DEVICE_STATUS_BATTERY, payload)
     }
 
     private fun emitNetworkStatus() {
-        notifyListeners("networkStatus", networkStatusObject(implementation.getNetworkStatus()))
+        val payload = networkStatusObject(implementation.getNetworkStatus())
+        nativeEventEngine.onEvent(RemixEventNames.DEVICE_STATUS_NETWORK, payload)
+        notifyListeners(RemixEventNames.DEVICE_STATUS_NETWORK, payload)
     }
 
     private fun emitScreenStatus() {
-        notifyListeners("screenStatus", screenStatusObject(implementation.getScreenStatus()))
+        val payload = screenStatusObject(implementation.getScreenStatus())
+        nativeEventEngine.onEvent(RemixEventNames.DEVICE_STATUS_SCREEN, payload)
+        notifyListeners(RemixEventNames.DEVICE_STATUS_SCREEN, payload)
+    }
+
+    private fun notifyScreenStatus() {
+        notifyListeners(
+            RemixEventNames.DEVICE_STATUS_SCREEN,
+            screenStatusObject(implementation.getScreenStatus()),
+        )
     }
 
     private fun emitKeyboardStatus() {
-        notifyListeners("keyboardStatus", keyboardStatusObject(implementation.getKeyboardStatus()))
+        val payload = keyboardStatusObject(implementation.getKeyboardStatus())
+        nativeEventEngine.onEvent(RemixEventNames.DEVICE_STATUS_KEYBOARD, payload)
+        notifyListeners(RemixEventNames.DEVICE_STATUS_KEYBOARD, payload)
     }
 
     private fun emitLifecycle(state: String) {
-        notifyListeners("lifecycle", JSObject().apply {
+        val payload = JSObject().apply {
             put("state", state)
-        })
+        }
+        nativeEventEngine.onEvent(RemixEventNames.PROJECT_LIFECYCLE, payload)
+        notifyListeners(RemixEventNames.PROJECT_LIFECYCLE, payload)
     }
 
     private fun emitProjectInstallRequested(path: String) {
@@ -582,11 +531,127 @@ class RemixCorePlugin : Plugin() {
         }
     }
 
+    private fun mqttStatusObject(status: RemixMqttStatus): JSObject {
+        return JSObject().apply {
+            put("connection", status.connection)
+            put("state", status.state)
+            put("revision", status.revision)
+            status.reason?.let { put("reason", it) }
+        }
+    }
+
+    private fun mqttMessageObject(message: RemixMqttMessage): JSObject {
+        return JSObject().apply {
+            put("connection", message.connection)
+            put("topic", message.topic)
+            put("payloadBase64", Base64.encodeToString(message.payload, Base64.NO_WRAP))
+            put("qos", message.qos)
+            put("retained", message.retained)
+            put("duplicate", message.duplicate)
+            put("receivedAt", message.receivedAt)
+        }
+    }
+
     private fun projectObject(project: InstalledProject): JSObject {
         return JSObject().apply {
             put("installed", project.installed)
             project.directory?.let { put("directory", it) }
             project.url?.let { put("url", it) }
+        }
+    }
+
+    private fun reloadNativeEventConfig() {
+        try {
+            nativeEventEngine.applyConfig(RemixNativeEventConfigLoader.load(context))
+        } catch (error: Exception) {
+            Log.e(TAG, "Failed to load active project nativeEvents configuration", error)
+            nativeEventEngine.applyConfig(
+                com.fainthit.remix.core.nativeevents.RemixNativeEventConfig(emptyList()),
+            )
+        }
+    }
+
+    private fun syncNativeEventSources(mounted: Boolean) {
+        val eventTypes = if (mounted) nativeEventEngine.eventTypes() else emptySet()
+        batteryStatusRequiredByNativeEvents = RemixEventNames.DEVICE_STATUS_BATTERY in eventTypes
+        networkStatusRequiredByNativeEvents = RemixEventNames.DEVICE_STATUS_NETWORK in eventTypes
+        screenStatusRequiredByNativeEvents = RemixEventNames.DEVICE_STATUS_SCREEN in eventTypes
+        keyboardStatusRequiredByNativeEvents = RemixEventNames.DEVICE_STATUS_KEYBOARD in eventTypes
+
+        if (batteryStatusRequiredByNativeEvents) ensureBatteryStatusUpdates()
+        else if (!batteryStatusRequestedByJs) stopBatteryStatusUpdatesSilently()
+
+        if (networkStatusRequiredByNativeEvents) ensureNetworkStatusUpdates()
+        else if (!networkStatusRequestedByJs) stopNetworkStatusUpdatesSilently()
+
+        if (screenStatusRequiredByNativeEvents) ensureScreenStatusUpdates()
+        else if (!screenStatusRequestedByJs) stopScreenStatusUpdatesSilently()
+
+        if (keyboardStatusRequiredByNativeEvents) ensureKeyboardStatusUpdates()
+        else if (keyboardStatusUpdateCount == 0) stopKeyboardStatusUpdatesSilently()
+    }
+
+    private fun emitNativeActionRequest(request: RemixNativeEventEngine.WebActionRequest) {
+        notifyListeners("nativeActionRequested", JSObject().apply {
+            put("requestId", request.requestId)
+            put("type", request.type)
+            put("args", request.args)
+        })
+    }
+
+    private fun ensureBatteryStatusUpdates() {
+        if (batteryReceiver != null) return
+        batteryReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                emitBatteryStatus()
+            }
+        }
+        context.registerReceiver(
+            batteryReceiver,
+            IntentFilter(Intent.ACTION_BATTERY_CHANGED),
+        )
+    }
+
+    private fun ensureNetworkStatusUpdates() {
+        if (networkCallback != null) return
+        val connectivityManager =
+            context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        networkCallback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) = emitNetworkStatus()
+            override fun onLost(network: Network) = emitNetworkStatus()
+            override fun onCapabilitiesChanged(
+                network: Network,
+                networkCapabilities: NetworkCapabilities,
+            ) = emitNetworkStatus()
+        }
+        connectivityManager.registerDefaultNetworkCallback(networkCallback!!)
+    }
+
+    private fun ensureScreenStatusUpdates() {
+        if (screenReceiver != null) return
+        screenReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                emitScreenStatus()
+            }
+        }
+        context.registerReceiver(
+            screenReceiver,
+            IntentFilter().apply {
+                addAction(Intent.ACTION_SCREEN_ON)
+                addAction(Intent.ACTION_SCREEN_OFF)
+                addAction(Intent.ACTION_USER_PRESENT)
+            },
+        )
+    }
+
+    private fun ensureKeyboardStatusUpdates() {
+        activity.runOnUiThread {
+            val decorView = activity.window.decorView
+            ViewCompat.setOnApplyWindowInsetsListener(decorView) { _, insets ->
+                emitKeyboardStatus()
+                insets
+            }
+            ViewCompat.requestApplyInsets(decorView)
         }
     }
 
@@ -633,6 +698,8 @@ class RemixCorePlugin : Plugin() {
     }
 
     companion object {
+        private const val TAG = "RemixCorePlugin"
+
         @Volatile
         private var activePlugin: RemixCorePlugin? = null
 

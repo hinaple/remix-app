@@ -1,6 +1,12 @@
-import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
+
+import {
+  listAndroidDevices,
+  resolveAdb,
+  run,
+  selectAndroidDevice,
+} from "../android-tools/index.mjs";
 
 import { buildProject } from "./build.js";
 import { loadRemixConfig } from "./config.js";
@@ -20,20 +26,20 @@ export interface DeployOptions {
 
 export async function deployProject(options: DeployOptions): Promise<void> {
   const cwd = path.resolve(options.cwd);
+  const adb = resolveAdb();
+  const devices = listAndroidDevices(adb);
+  const device = await selectAndroidDevice(devices, options.device);
   const packagePath =
     options.build === false
       ? await resolveExistingPackage(cwd)
       : await buildProject({ cwd });
 
-  const adb = resolveAdb();
-  const devices = listDevices(adb);
-  const device = selectDevice(devices, options.device);
-  const devicePackagePath = installPackageFile(adb, device, packagePath);
+  const devicePackagePath = installPackageFile(adb, device.serial, packagePath);
 
-  activateProjectPackage(adb, device, devicePackagePath);
-  startHostWithInstall(adb, device, devicePackagePath);
+  activateProjectPackage(adb, device.serial, devicePackagePath);
+  startHostWithInstall(adb, device.serial, devicePackagePath);
 
-  console.log(`Deployed ${packagePath} to ${device}`);
+  console.log(`Deployed ${packagePath} to ${device.serial}`);
 }
 
 async function resolveExistingPackage(cwd: string): Promise<string> {
@@ -51,72 +57,6 @@ async function resolveExistingPackage(cwd: string): Promise<string> {
   }
 
   return packagePath;
-}
-
-function resolveAdb(): string {
-  const executable = process.platform === "win32" ? "adb.exe" : "adb";
-  const candidates = [
-    process.env.REMIXAPP_ADB,
-    process.env.ADB,
-    process.env.ANDROID_HOME
-      ? path.join(process.env.ANDROID_HOME, "platform-tools", executable)
-      : undefined,
-    process.env.ANDROID_SDK_ROOT
-      ? path.join(process.env.ANDROID_SDK_ROOT, "platform-tools", executable)
-      : undefined,
-    process.env.LOCALAPPDATA
-      ? path.join(
-          process.env.LOCALAPPDATA,
-          "Android",
-          "Sdk",
-          "platform-tools",
-          executable,
-        )
-      : undefined,
-    "adb",
-  ].filter((value): value is string => Boolean(value));
-
-  for (const candidate of candidates) {
-    const result = run(candidate, ["version"], { allowFailure: true });
-
-    if (result.status === 0) {
-      return candidate;
-    }
-  }
-
-  throw new RemixCliError(
-    "Failed to run adb. Set REMIXAPP_ADB or add Android SDK platform-tools to PATH.",
-  );
-}
-
-function listDevices(adb: string): string[] {
-  const result = run(adb, ["devices"]);
-  return result.stdout
-    .split(/\r?\n/)
-    .slice(1)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => line.split(/\s+/))
-    .filter(([, state]) => state === "device")
-    .map(([serial]) => serial);
-}
-
-function selectDevice(devices: string[], requested: string | undefined): string {
-  if (requested) {
-    if (!devices.includes(requested)) {
-      throw new RemixCliError(
-        `ADB device not found: ${requested}\nConnected devices: ${devices.join(", ") || "none"}`,
-      );
-    }
-
-    return requested;
-  }
-
-  if (devices.length === 0) {
-    throw new RemixCliError("No connected adb devices found.");
-  }
-
-  return devices[0];
 }
 
 function installPackageFile(
@@ -199,35 +139,4 @@ function startHostWithInstall(
 
 function shellQuote(value: string): string {
   return `'${value.replace(/'/g, "'\\''")}'`;
-}
-
-interface RunOptions {
-  allowFailure?: boolean;
-}
-
-interface RunResult {
-  status: number;
-  stdout: string;
-  stderr: string;
-}
-
-function run(command: string, args: string[], options: RunOptions = {}): RunResult {
-  const result = spawnSync(command, args, {
-    encoding: "utf8",
-    stdio: "pipe",
-  });
-
-  const status = result.status ?? 1;
-  const stdout = result.stdout ?? "";
-  const stderr = result.stderr ?? "";
-
-  if (!options.allowFailure && status !== 0) {
-    throw new RemixCliError(
-      [`Command failed: ${command} ${args.join(" ")}`, stdout, stderr]
-        .filter(Boolean)
-        .join("\n"),
-    );
-  }
-
-  return { status, stdout, stderr };
 }

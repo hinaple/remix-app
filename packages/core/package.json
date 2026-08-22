@@ -1,7 +1,8 @@
 {
   "name": "@remixapp/core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Native device bridge for the remixApp Host",
+  "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -18,9 +19,22 @@
     "android/proguard-rules.pro",
     "dist"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hinaple/remix-app.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/hinaple/remix-app#readme",
+  "bugs": {
+    "url": "https://github.com/hinaple/remix-app/issues"
+  },
   "sideEffects": false,
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "prepack": "pnpm build",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "peerDependencies": {

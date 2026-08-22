@@ -6,10 +6,6 @@ export default defineConfig({
   entry: "src/index.ts",
   styles: ["src/style.css"],
   kiosk: true,
-  runtime: {
-    // foreground: true,
-    // keepCpuAwake: true,
-  },
   screen: {
     // keepOn: true,
     // immersive: true,
@@ -25,5 +21,27 @@ export default defineConfig({
   input: {
     // capturedKeys: ["VOLUME_UP", "VOLUME_DOWN"],
     captureBack: true,
+  },
+  nativeEvents: {
+    rules: [
+      {
+        on: "device:status:battery",
+        when: {
+          level: { lte: 0.15 },
+          charging: false,
+        },
+        actions: [
+          { type: "device.screen.wake" },
+          {
+            type: "device.vibration.trigger",
+            args: { duration: 500 },
+          },
+          {
+            type: "host.panel.status.setText",
+            args: { id: "example-mounted", text: "Low battery" },
+          },
+        ],
+      },
+    ],
   },
 });
