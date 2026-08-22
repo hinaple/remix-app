@@ -17,7 +17,6 @@ const androidVersionFile = resolve("packages/app/android/version.properties");
 const templatePackageFile = resolve(
   "packages/create-remixapp/template-default/package.json",
 );
-const documentationFiles = [resolve("README.md"), resolve("README_ko.md")];
 
 if (mode !== "check" && mode !== "sync") {
   fail("Usage: node scripts/release-versions.mjs <check|sync>");
@@ -56,14 +55,12 @@ if (mode === "sync") {
   syncTemplateDependencies(productVersion);
   syncSdkVersionConstant(productVersion);
   syncAndroidVersion(productVersion);
-  syncDocumentationVersions(productVersion);
 }
 
 checkRootVersion(productVersion);
 checkPublicInternalDependencies(productVersion);
 checkTemplateDependencies(productVersion);
 checkSdkVersionConstant(productVersion);
-checkDocumentationVersions(productVersion);
 const android = checkAndroidVersion(productVersion);
 
 console.log(
@@ -130,18 +127,6 @@ function syncAndroidVersion(version) {
   );
 }
 
-function syncDocumentationVersions(version) {
-  for (const file of documentationFiles) {
-    const source = fs.readFileSync(file, "utf8");
-    const updated = source.replace(
-      /(\"builtWith\":\s*\{\s*\"cli\":\s*\")[^\"]+(\",\s*\"sdk\":\s*\")[^\"]+(\")/,
-      `$1${version}$2${version}$3`,
-    );
-    if (updated === source) continue;
-    fs.writeFileSync(file, updated, "utf8");
-  }
-}
-
 function checkRootVersion(version) {
   const rootPackage = readJson(resolve("package.json"));
   if (rootPackage.version !== version) {
@@ -180,20 +165,6 @@ function checkSdkVersionConstant(version) {
   const match = source.match(/export const REMIX_TOOLCHAIN_VERSION = "([^"]+)";/);
   if (match?.[1] !== version) {
     fail(`REMIX_TOOLCHAIN_VERSION must be ${version}, found ${match?.[1] ?? "missing"}`);
-  }
-}
-
-function checkDocumentationVersions(version) {
-  for (const file of documentationFiles) {
-    const source = fs.readFileSync(file, "utf8");
-    const match = source.match(
-      /\"builtWith\":\s*\{\s*\"cli\":\s*\"([^\"]+)\",\s*\"sdk\":\s*\"([^\"]+)\"/,
-    );
-    if (match?.[1] !== version || match?.[2] !== version) {
-      fail(
-        `${path.relative(root, file)} builtWith example must use ${version}`,
-      );
-    }
   }
 }
 

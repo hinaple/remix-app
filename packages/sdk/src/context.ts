@@ -21,8 +21,10 @@ export type RemixAppMount = (
  * Optional cleanup function returned by `RemixAppMount`.
  *
  * The Host calls this when the project is unloaded or replaced. Project code
- * should remove DOM nodes, unsubscribe events, and release project-owned
- * resources here.
+ * should release resources it created outside the Host context, such as
+ * global DOM listeners, timers, and external client subscriptions. The Host
+ * automatically clears context-owned event and status subscriptions when the
+ * project is unmounted.
  */
 export type RemixAppUnmount = () => void | Promise<void>
 
