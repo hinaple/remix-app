@@ -17,9 +17,10 @@
     }
   },
   "bin": {
-    "remix-cli": "dist/cli.js"
+    "remix-cli": "index.js"
   },
   "files": [
+    "index.js",
     "dist",
     "android-tools"
   ],
