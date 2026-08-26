@@ -1,8 +1,8 @@
 package com.fainthit.remix.core.nativeevents
 
 import android.content.Context
+import com.fainthit.remix.core.project.RemixProjectConfigRepository
 import org.json.JSONObject
-import java.io.File
 
 data class RemixNativeEventConfig(
     val rules: List<RemixNativeEventRule>,
@@ -23,10 +23,11 @@ data class RemixConfiguredAction(
 
 object RemixNativeEventConfigLoader {
     fun load(context: Context): RemixNativeEventConfig {
-        val manifestFile = File(context.filesDir, "remix/projects/active/project.json")
-        if (!manifestFile.isFile) return RemixNativeEventConfig(emptyList())
-
-        val manifest = JSONObject(manifestFile.readText(Charsets.UTF_8))
+        val manifest = try {
+            RemixProjectConfigRepository.loadActiveManifest(context)
+        } catch (_: IllegalArgumentException) {
+            return RemixNativeEventConfig(emptyList())
+        }
         val nativeEvents = manifest.optJSONObject("nativeEvents")
             ?: return RemixNativeEventConfig(emptyList())
         val values = nativeEvents.optJSONArray("rules")

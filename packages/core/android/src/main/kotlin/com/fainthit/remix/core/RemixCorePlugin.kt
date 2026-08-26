@@ -19,6 +19,7 @@ import com.fainthit.remix.core.mqtt.RemixMqttStatus
 import com.fainthit.remix.core.actions.RemixNativeActionRegistry
 import com.fainthit.remix.core.nativeevents.RemixNativeEventConfigLoader
 import com.fainthit.remix.core.nativeevents.RemixNativeEventEngine
+import com.fainthit.remix.core.project.RemixProjectConfigRepository
 import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
@@ -318,6 +319,18 @@ class RemixCorePlugin : Plugin() {
     fun getActiveProject(call: PluginCall) {
         val project = implementation.getActiveProject()
         call.resolve(projectObject(project))
+    }
+
+    @PluginMethod
+    fun getActiveProjectManifest(call: PluginCall) {
+        try {
+            val manifest = RemixProjectConfigRepository.loadActiveManifest(context)
+            call.resolve(JSObject().apply {
+                put("manifest", manifest)
+            })
+        } catch (error: Exception) {
+            call.reject("Failed to load active project manifest", error)
+        }
     }
 
     @PluginMethod

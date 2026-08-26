@@ -60,6 +60,10 @@ export interface RemixInstallProjectPackageResult {
   url: string;
 }
 
+export interface RemixActiveProjectManifestResult {
+  manifest: Record<string, unknown>;
+}
+
 export type RemixScreenOrientation =
   | "portrait"
   | "landscape"
@@ -167,6 +171,7 @@ export interface RemixCorePlugin {
     path: string;
   }): Promise<RemixInstallProjectPackageResult>;
   getActiveProject(): Promise<RemixInstalledProject>;
+  getActiveProjectManifest(): Promise<RemixActiveProjectManifestResult>;
   consumeLaunchProjectInstall(): Promise<RemixLaunchProjectInstall>;
   pickProjectPackage(): Promise<RemixPickedProjectPackage>;
   exitApp(): Promise<void>;

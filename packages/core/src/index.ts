@@ -7,6 +7,7 @@ export const RemixCore = registerPlugin<RemixCorePlugin>("RemixCore", {
 });
 
 export type {
+  RemixActiveProjectManifestResult,
   RemixCoreKeyEvent,
   RemixCoreMqttConnectionState,
   RemixCoreMqttMessageEvent,

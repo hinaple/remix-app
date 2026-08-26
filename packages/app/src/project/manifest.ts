@@ -1,3 +1,4 @@
+import { RemixCore } from "@remixapp/core";
 import {
   REMIX_MIN_RUNTIME_API_VERSION,
   REMIX_PROJECT_FORMAT_VERSION,
@@ -5,18 +6,8 @@ import {
   type RemixProjectManifest,
 } from "@remixapp/sdk";
 
-export async function loadManifest(
-  baseUrl: string,
-): Promise<RemixProjectManifest> {
-  const response = await fetch(new URL("project.json", baseUrl));
-
-  if (!response.ok) {
-    throw new Error(
-      `Failed to load project.json: ${response.status} ${response.statusText}`,
-    );
-  }
-
-  const value: unknown = await response.json();
+export async function loadManifest(): Promise<RemixProjectManifest> {
+  const { manifest: value } = await RemixCore.getActiveProjectManifest();
 
   if (!isRecord(value) || !hasManifestShape(value)) {
     throw new Error(

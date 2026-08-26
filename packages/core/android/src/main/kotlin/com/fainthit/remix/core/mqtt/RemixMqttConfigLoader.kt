@@ -2,9 +2,9 @@ package com.fainthit.remix.core.mqtt
 
 import android.content.Context
 import android.provider.Settings
+import com.fainthit.remix.core.project.RemixProjectConfigRepository
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.File
 import java.net.URI
 import java.security.MessageDigest
 
@@ -12,13 +12,11 @@ object RemixMqttConfigLoader {
     private val connectionNamePattern = Regex("^[A-Za-z0-9_-]+$")
 
     fun load(context: Context): RemixMqttConfig {
-        val manifestFile = File(context.filesDir, "remix/projects/active/project.json")
-
-        if (!manifestFile.isFile) {
+        val manifest = try {
+            RemixProjectConfigRepository.loadActiveManifest(context)
+        } catch (_: IllegalArgumentException) {
             return RemixMqttConfig(emptyMap())
         }
-
-        val manifest = JSONObject(manifestFile.readText(Charsets.UTF_8))
         val mqtt = manifest.optJSONObject("mqtt") ?: return RemixMqttConfig(emptyMap())
         val connections = mqtt.optJSONObject("connections")
             ?: throw IllegalArgumentException("MQTT connections must be an object")

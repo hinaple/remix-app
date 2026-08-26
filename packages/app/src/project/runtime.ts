@@ -37,7 +37,7 @@ export class RemixProjectRuntime {
     clearHostPanel(this.options.hostPanel);
 
     const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
-    const manifest = await loadManifest(normalizedBaseUrl);
+    const manifest = await loadManifest();
     const subscriptions = new SubscriptionScope();
     const events = new EventBus(subscriptions);
     const hostPanel = this.options.hostPanel ?? createNoopHostPanelContext();
