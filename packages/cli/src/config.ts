@@ -336,6 +336,14 @@ function validateNativeEventsConfig(value: unknown): void {
     if (typeof rule.on !== "string" || !eventTypes.has(rule.on)) {
       fail(`remix config field "${field}.on" must be a supported event name`);
     }
+    if (
+      rule.activityState !== undefined &&
+      !["inactive", "resumed", "always"].includes(rule.activityState as string)
+    ) {
+      fail(
+        `remix config field "${field}.activityState" must be one of: inactive, resumed, always`,
+      );
+    }
     if (rule.when !== undefined) validateNativeEventWhen(rule.when, `${field}.when`);
     if (!Array.isArray(rule.actions) || rule.actions.length === 0) {
       fail(`remix config field "${field}.actions" must be a non-empty array`);

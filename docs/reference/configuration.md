@@ -46,7 +46,7 @@ export default defineConfig({
 | `screen` | `object` | 아니요 | 시작 시 적용할 화면 및 soft keyboard 정책입니다. |
 | `input` | `object` | 아니요 | hardware key와 Android back key 정책입니다. |
 | `mqtt` | `object` | 아니요 | native runtime이 소유할 고정 MQTT 연결과 구독입니다. |
-| `nativeEvents` | `object` | 아니요 | Activity가 inactive인 동안에도 평가할 event-action 규칙입니다. |
+| `nativeEvents` | `object` | 아니요 | Activity 상태에 따라 평가할 event-action 규칙입니다. |
 | `vite` | Vite config | 아니요 | 프로젝트별 Vite 설정입니다. |
 
 `entry`와 `styles`는 절대 경로가 아닌 프로젝트 상대 경로여야 합니다. `styles`에 명시한 파일이 없으면 빌드가 실패합니다.
@@ -130,13 +130,14 @@ await context.mqtt.publish("primary", "devices/kiosk-1/state", "ready", {
 
 ## nativeEvents
 
-`nativeEvents`는 프로젝트 Activity가 inactive인 동안 native event를 조건과 비교하여 action을 순서대로 실행합니다.
+`nativeEvents`는 native event를 조건과 비교하여 action을 순서대로 실행합니다. 각 rule의 `activityState`로 실행할 Activity 상태를 제한할 수 있으며 기본값은 `always`입니다.
 
 ```ts
 nativeEvents: {
   rules: [
     {
       on: "device:status:battery",
+      activityState: "inactive",
       when: {
         level: { lte: 0.15 },
         charging: false,
@@ -154,7 +155,7 @@ nativeEvents: {
 }
 ```
 
-`when`의 key는 event payload의 dot path입니다. 값 직접 비교 외에 `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `contains`, `exists` matcher를 사용할 수 있습니다. `actions`는 비어 있을 수 없으며 `expiresIn`을 지정하면 1 이상의 정수 ms여야 합니다.
+`activityState`는 `inactive`, `resumed`, `always` 중 하나이며 생략하면 `always`입니다. `when`의 key는 event payload의 dot path입니다. 값 직접 비교 외에 `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `contains`, `exists` matcher를 사용할 수 있습니다. `actions`는 비어 있을 수 없으며 `expiresIn`을 지정하면 1 이상의 정수 ms여야 합니다.
 
 `host.panel.buttons.set`처럼 callback을 포함하는 context 전용 기능은 `nativeEvents` action으로 사용할 수 없습니다.
 

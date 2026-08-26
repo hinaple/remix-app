@@ -13,6 +13,7 @@ export type {
 export { remixActionDefinitions, normalizeRemixActionCall } from "./actions.js";
 
 export type {
+  RemixNativeEventActivityState,
   RemixNativeEventMatcher,
   RemixNativeEventPrimitive,
   RemixNativeEventProjectRule,

@@ -107,9 +107,11 @@ Host가 지원하는 값보다 크면 package가 더 새로운 형식이므로 �
 
 ### runtimeApiVersion
 
-`RemixAppContext`, event와 action 계약의 버전입니다. 현재 SDK/Host runtime API는 `2`이며 현재 Host가 요구하는 최소 버전도 `2`입니다.
+`RemixAppContext`, event와 action 계약의 버전입니다. 현재 SDK/Host runtime API는 `4`이며 현재 Host가 요구하는 최소 버전은 `2`입니다.
 
 초기 compatibility field가 없던 package는 version `1`로 해석됩니다. 따라서 runtime API 2를 요구하는 현재 Host에서는 이전 package를 새 CLI로 다시 빌드해야 합니다.
+
+runtime API 4부터 native event rule의 `activityState`를 지원하며 필드가 없으면 `always`로 해석합니다.
 
 ### builtWith
 

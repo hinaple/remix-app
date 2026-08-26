@@ -32,6 +32,10 @@ assert(
   "example builtWith versions must match the toolchain",
 );
 assert(Array.isArray(manifest.nativeEvents?.rules), "example nativeEvents must be built");
+assert(
+  manifest.nativeEvents.rules.every((rule) => rule.activityState === "always"),
+  "example nativeEvents must default activityState to always",
+);
 console.log(`Example manifest verified for toolchain ${REMIX_TOOLCHAIN_VERSION}.`);
 
 function readJson(relativePath) {

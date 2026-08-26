@@ -10,6 +10,7 @@ data class RemixNativeEventConfig(
 
 data class RemixNativeEventRule(
     val event: String,
+    val activityState: String,
     val conditions: JSONObject,
     val actions: List<RemixConfiguredAction>,
     val expiresIn: Long,
@@ -44,6 +45,10 @@ object RemixNativeEventConfigLoader {
             val event = value.optString("on").takeIf { it.isNotEmpty() }
                 ?: throw IllegalArgumentException("nativeEvents rule $index requires on")
             require(event in SUPPORTED_EVENTS) { "Unsupported native event: $event" }
+            val activityState = value.optString("activityState", "always")
+            require(activityState in ACTIVITY_STATES) {
+                "nativeEvents rule $index activityState must be one of: inactive, resumed, always"
+            }
             val actionValues = value.optJSONArray("actions")
                 ?: throw IllegalArgumentException("nativeEvents rule $index requires actions")
             require(actionValues.length() > 0) { "nativeEvents rule $index requires actions" }
@@ -67,6 +72,7 @@ object RemixNativeEventConfigLoader {
 
             rules += RemixNativeEventRule(
                 event = event,
+                activityState = activityState,
                 conditions = value.optJSONObject("when") ?: JSONObject(),
                 actions = actions,
                 expiresIn = value.optLong("expiresIn", 10_000L).coerceAtLeast(1L),
@@ -86,4 +92,5 @@ object RemixNativeEventConfigLoader {
         "mqtt:status",
         "mqtt:message",
     )
+    private val ACTIVITY_STATES = setOf("inactive", "resumed", "always")
 }

@@ -1,6 +1,6 @@
 # nativeEvents
 
-`nativeEvents`는 Android Activity가 inactive인 동안 발생한 Host event를 native runtime에서 평가하고 미리 선언한 action을 실행합니다. WebView JavaScript가 실행 중일 때 사용하는 일반 event handler를 대체하는 기능이 아니라, pause 상태에서도 필요한 제한된 자동 동작을 위한 config입니다.
+`nativeEvents`는 Host event를 native runtime에서 평가하고 미리 선언한 action을 실행합니다. rule별 `activityState`로 Android Activity가 inactive이거나 resumed인 환경을 선택할 수 있습니다. WebView JavaScript event handler와 별도로 실행되므로 같은 event를 양쪽에 등록하면 action이 중복 실행될 수 있습니다.
 
 ## 언제 사용하는가
 
@@ -17,7 +17,7 @@
 - callback을 포함하는 UI button 구성
 - 임의 JavaScript 실행
 
-Activity가 resumed 상태일 때 event는 일반 `context.events` listener로 처리합니다. native event engine은 resumed 상태에서는 rule을 enqueue하지 않습니다.
+`activityState`의 기본값은 `always`입니다. inactive 상태에서만 필요한 background action은 rule에 `activityState: "inactive"`를 명시합니다.
 
 ## 기본 예제
 
@@ -32,6 +32,7 @@ export default defineConfig({
     rules: [
       {
         on: "device:status:battery",
+        activityState: "inactive",
         when: {
           level: { lte: 0.15 },
           charging: false,
@@ -59,6 +60,7 @@ export default defineConfig({
 | 필드 | 필수 | 설명 |
 | --- | --- | --- |
 | `on` | 예 | 평가할 event 이름 |
+| `activityState` | 아니요 | `inactive`, `resumed`, `always`. 기본 `always` |
 | `when` | 아니요 | event payload 조건. 생략하면 해당 event에 항상 일치 |
 | `actions` | 예 | 순서대로 실행할 하나 이상의 action |
 | `expiresIn` | 아니요 | sequence가 완료되어야 하는 시간. 기본 `10000`ms |
@@ -76,7 +78,13 @@ mqtt:status
 mqtt:message
 ```
 
-engine은 Activity가 inactive일 때만 event를 평가합니다. 따라서 `project:lifecycle` 중 실질적인 inactive 진입 신호인 `paused` rule은 사용할 수 있지만, Activity가 이미 resumed된 뒤 발생하는 `resumed` event는 새 sequence를 만들지 않으며 project stop 시 pending session도 정리됩니다.
+engine은 각 rule의 `activityState`와 현재 Activity lifecycle을 비교합니다.
+
+- `inactive`: Activity가 pause된 동안만 평가
+- `resumed`: Activity가 resumed된 동안만 평가
+- `always`: 두 상태에서 모두 평가하며 기본값
+
+`project:lifecycle` rule에도 같은 기준이 적용됩니다. `paused` event는 `inactive` 또는 `always` rule과 일치하고, `resumed` event는 `resumed` 또는 `always` rule과 일치합니다. project stop 시 pending session은 정리됩니다.
 
 ## when matcher
 
@@ -217,7 +225,7 @@ config가 typecheck를 통과해도 동적으로 생성한 object나 JavaScript 
 
 browser dev runtime은 action contract와 일부 기기 동작을 simulation하지만 Android Activity inactive engine 자체를 동일하게 재현하지 않습니다. 다음 항목은 실제 Android에서 확인합니다.
 
-- pause 상태에서 rule이 발생하는지
+- `inactive`, `resumed`, `always` rule이 각 Activity 상태에서 발생하는지
 - native action의 즉시 실행
 - WebView action의 resume 대기
 - `expiresIn` 만료

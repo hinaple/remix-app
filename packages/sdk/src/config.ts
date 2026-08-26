@@ -73,7 +73,7 @@ export interface RemixConfig {
    */
   mqtt?: RemixMqttConfig;
 
-  /** Native rules evaluated while the mounted project Activity is inactive. */
+  /** Native rules evaluated according to each rule's Activity state policy. */
   nativeEvents?: RemixNativeEventsConfig;
 
   /**

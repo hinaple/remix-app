@@ -125,7 +125,7 @@ context.events.on("project:lifecycle", ({ state }) => {
 
 Activity pause는 project unmount가 아닙니다. project DOM과 JavaScript context는 유지됩니다. native foreground service와 MQTT connection도 별도 lifecycle로 계속 동작할 수 있습니다.
 
-WebView가 inactive일 때 실행되어야 하는 제한된 action은 [nativeEvents](../reference/native-events.md)를 사용합니다.
+Activity 상태와 관계없이 native runtime에서 선언적으로 실행할 제한된 action은 [nativeEvents](../reference/native-events.md)를 사용합니다. rule의 `activityState`를 `inactive`, `resumed`, `always`로 설정할 수 있습니다.
 
 ## stop과 unmount 순서
 

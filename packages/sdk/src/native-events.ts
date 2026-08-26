@@ -6,6 +6,10 @@ import type { RemixEventMap } from "./events.js";
 
 export type RemixNativeEventType = keyof RemixEventMap;
 export type RemixNativeEventPrimitive = string | number | boolean | null;
+export type RemixNativeEventActivityState =
+  | "inactive"
+  | "resumed"
+  | "always";
 
 export interface RemixNativeEventMatcher {
   eq?: RemixNativeEventPrimitive;
@@ -21,6 +25,8 @@ export interface RemixNativeEventMatcher {
 
 export interface RemixNativeEventRule {
   on: RemixNativeEventType;
+  /** Activity state in which the rule is evaluated. Defaults to `always`. */
+  activityState?: RemixNativeEventActivityState;
   when?: Record<string, RemixNativeEventPrimitive | RemixNativeEventMatcher>;
   actions: RemixNativeEventAction[];
   expiresIn?: number;
@@ -32,6 +38,7 @@ export interface RemixNativeEventsConfig {
 
 export interface RemixNativeEventProjectRule {
   on: RemixNativeEventType;
+  activityState: RemixNativeEventActivityState;
   when: Record<string, RemixNativeEventPrimitive | RemixNativeEventMatcher>;
   actions: RemixNormalizedActionCall[];
   expiresIn: number;

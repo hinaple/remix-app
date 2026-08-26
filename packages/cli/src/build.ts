@@ -334,6 +334,7 @@ export function createProjectManifest(config: {
           nativeEvents: {
             rules: config.nativeEvents.rules.map((rule) => ({
               on: rule.on,
+              activityState: rule.activityState ?? "always",
               when: rule.when ?? {},
               actions: rule.actions.map((action) =>
                 normalizeRemixActionCall(action, { nativeEvents: true }),

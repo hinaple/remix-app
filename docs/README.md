@@ -22,7 +22,7 @@ remixApp 프로젝트를 처음 만든다면 [빠른 시작](getting-started/qui
 - [RemixAppContext](reference/context.md): 프로젝트에서 사용할 수 있는 Host API
 - [이벤트와 상태](reference/events.md): snapshot, event payload와 구독 수명
 - [MQTT](reference/mqtt.md): native 연결 설정, 상태, publish와 message
-- [nativeEvents](reference/native-events.md): Activity inactive 상태의 조건부 action
+- [nativeEvents](reference/native-events.md): Activity 상태별 조건부 action
 
 ### 기능별 가이드
 
