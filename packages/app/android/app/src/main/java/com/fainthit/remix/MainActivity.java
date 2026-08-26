@@ -15,6 +15,8 @@ public class MainActivity extends BridgeActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        RemixPermissionManager.grantAllDeclaredRuntimePermissions(this);
+
         getBridge().getWebView().setWebChromeClient(new BridgeWebChromeClient(getBridge()) {
             @Override
             public Bitmap getDefaultVideoPoster() {

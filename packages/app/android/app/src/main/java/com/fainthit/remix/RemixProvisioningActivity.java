@@ -18,6 +18,8 @@ public class RemixProvisioningActivity extends Activity {
                 DevicePolicyManager.PROVISIONING_MODE_FULLY_MANAGED_DEVICE
             );
             result.putExtra(DevicePolicyManager.EXTRA_PROVISIONING_SKIP_EDUCATION_SCREENS, true);
+        } else if (DevicePolicyManager.ACTION_ADMIN_POLICY_COMPLIANCE.equals(getIntent().getAction())) {
+            RemixPermissionManager.grantAllDeclaredRuntimePermissions(this);
         }
 
         setResult(RESULT_OK, result);
