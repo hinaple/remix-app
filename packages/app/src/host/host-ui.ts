@@ -6,6 +6,7 @@ const HostUiDataMap = {
   hostStatus: "host-status",
   projectContainer: "project-container",
   projectImportButton: "import-project",
+  resetButton: "reset",
   hostExitButton: "exit-app",
   projectPanelStatus: "project-panel-status",
   projectPanelButtons: "project-panel-buttons",

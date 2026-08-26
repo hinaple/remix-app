@@ -14,6 +14,12 @@ import {
 } from "../project/source.js";
 import { createHostPanelContext } from "@remixapp/runtime";
 
+declare global {
+  interface Window {
+    reset: () => void;
+  }
+}
+
 export function createHostApp(root: HTMLElement): void {
   const ui = createHostUi(root);
   if (import.meta.env.DEV) installDevHostGlobal(ui);
@@ -33,6 +39,8 @@ export function createHostApp(root: HTMLElement): void {
     onKey: handleHostKey,
     hostPanel: hostProjectPanel,
   });
+  window.reset = () => runtime.reset();
+
   let activeInstallPath: string | undefined;
 
   const installRequestedProject = async (
@@ -70,6 +78,11 @@ export function createHostApp(root: HTMLElement): void {
 
   ui.hostExitButton.addEventListener("click", () => {
     void exitApp(ui, runtime);
+  });
+
+  ui.resetButton.addEventListener("click", async () => {
+    await runtime.reset();
+    ui.showProjectPage();
   });
 
   void startInitialProject(ui, runtime);

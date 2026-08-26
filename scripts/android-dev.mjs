@@ -17,11 +17,10 @@ import {
   run,
   selectAndroidDevice,
 } from "../packages/cli/android-tools/index.mjs";
+import { installAndLaunchAndroidHost } from "./android-host.mjs";
 
 const HOST = "127.0.0.1";
 const PORT = 5173;
-const APP_ID = "com.fainthit.remix";
-const ACTIVITY = `${APP_ID}/.MainActivity`;
 const root = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const appDir = path.join(root, "packages", "app");
 const androidDir = path.join(appDir, "android");
@@ -100,11 +99,7 @@ try {
   installSignalHandlers();
   await waitForServer(vite);
 
-  run(adb, ["-s", device.serial, "install", "-r", apk], {
-    stdio: "inherit",
-  });
-  run(adb, ["-s", device.serial, "shell", "am", "force-stop", APP_ID]);
-  run(adb, ["-s", device.serial, "shell", "am", "start", "-n", ACTIVITY]);
+  installAndLaunchAndroidHost(adb, device.serial, apk);
 
   console.log(`Live reload ready on ${device.serial}. Press Ctrl+C to stop.`);
   const code = await viteExit;

@@ -13,7 +13,7 @@ Android Host는 다음 workspace를 함께 사용합니다.
 | `packages/core` | Capacitor plugin TypeScript 계약과 web fallback |
 | `packages/core/android` | Kotlin native bridge, foreground service, MQTT, native event engine |
 | `scripts/android-dev.mjs` | live-reload build와 기기 실행 자동화 |
-| `scripts/install-android-app.mjs` | debug APK 설치 |
+| `scripts/install-android-app.mjs` | debug APK 설치와 실행 |
 
 Android application ID와 main Activity는 다음과 같습니다.
 
@@ -80,7 +80,7 @@ pnpm android:install
 pnpm android:install:all
 ```
 
-`android:install`은 기존 app을 유지한 채 `adb install -r`로 교체합니다. application data를 초기화하지 않습니다.
+`android:install`은 기존 app을 유지한 채 `adb install -r`로 교체하고 Host Activity를 자동으로 다시 시작합니다. application data를 초기화하지 않습니다.
 
 ## Android Studio 사용
 
