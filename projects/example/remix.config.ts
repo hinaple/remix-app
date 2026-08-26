@@ -1,6 +1,7 @@
 import { defineConfig } from "@remixapp/sdk/config";
 
 export default defineConfig({
+  projectId: "remixapp-default-example",
   name: "example",
   version: "0.1.0",
   entry: "src/index.ts",

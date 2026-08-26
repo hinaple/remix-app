@@ -12,10 +12,10 @@ npm run deploy
 
 ## 명령 요약
 
-| 명령 | 설명 |
-| --- | --- |
-| `remix-cli dev` | 브라우저 개발 Host와 Vite 개발 서버를 실행합니다. |
-| `remix-cli build` | source config를 검증하고 `.remixprj`를 만듭니다. |
+| 명령               | 설명                                                  |
+| ------------------ | ----------------------------------------------------- |
+| `remix-cli dev`    | 브라우저 개발 Host와 Vite 개발 서버를 실행합니다.     |
+| `remix-cli build`  | source config를 검증하고 `.remixprj`를 만듭니다.      |
 | `remix-cli deploy` | 프로젝트를 빌드하고 연결된 Android Host에 설치합니다. |
 
 `--cwd <path>`는 모든 명령에서 프로젝트 루트를 지정합니다. 생략하면 현재 작업 디렉터리를 사용합니다.
@@ -26,13 +26,13 @@ npm run deploy
 remix-cli dev [--cwd <path>] [--host [host]] [--port <port>] [--open]
 ```
 
-| 옵션 | 설명 |
-| --- | --- |
-| `--cwd <path>` | 프로젝트 루트입니다. |
-| `--host` | network interface에서 접근할 수 있도록 Vite server를 엽니다. |
-| `--host <host>` | bind할 host 주소를 직접 지정합니다. |
-| `--port <port>` | 0보다 큰 정수 port를 지정합니다. |
-| `--open` | 시작 후 브라우저를 엽니다. |
+| 옵션            | 설명                                                         |
+| --------------- | ------------------------------------------------------------ |
+| `--cwd <path>`  | 프로젝트 루트입니다.                                         |
+| `--host`        | network interface에서 접근할 수 있도록 Vite server를 엽니다. |
+| `--host <host>` | bind할 host 주소를 직접 지정합니다.                          |
+| `--port <port>` | 0보다 큰 정수 port를 지정합니다.                             |
+| `--open`        | 시작 후 브라우저를 엽니다.                                   |
 
 ```sh
 remix-cli dev --host 0.0.0.0 --port 5173 --open
@@ -61,6 +61,8 @@ CLI는 다음 작업을 수행합니다.
 5. source의 `resources/`를 경로와 이름을 유지하여 복사합니다.
 6. `project.json`을 작성하고 `.remixprj` ZIP archive를 만듭니다.
 
+config에 `projectId`가 없으면 빌드는 계속 진행하지만 프로젝트 `name`을 기기별 데이터 식별자로 사용한다는 warning을 출력합니다.
+
 `--unpack`은 ZIP 대신 archive와 동일한 구조의 디렉터리를 생성합니다.
 
 ```sh
@@ -75,10 +77,10 @@ manifest, CSS 병합, asset 또는 resources 복사 문제를 확인할 때 사�
 remix-cli deploy [--cwd <path>] [--device <serial>] [--no-build]
 ```
 
-| 옵션 | 설명 |
-| --- | --- |
-| `--device <serial>` | `adb devices`에 표시되는 Android device serial입니다. |
-| `--no-build` | 새로 빌드하지 않고 `dist/<name>-<version>.remixprj`를 사용합니다. |
+| 옵션                | 설명                                                              |
+| ------------------- | ----------------------------------------------------------------- |
+| `--device <serial>` | `adb devices`에 표시되는 Android device serial입니다.             |
+| `--no-build`        | 새로 빌드하지 않고 `dist/<name>-<version>.remixprj`를 사용합니다. |
 
 기본적으로 deploy는 프로젝트를 먼저 빌드합니다. 그 뒤 ADB로 package를 기기에 전송하고 `com.fainthit.remix` Host의 active project로 교체한 다음 Host Activity를 시작합니다.
 
@@ -110,20 +112,21 @@ npm run deploy
 
 ## 오류 해석
 
-| 오류 유형 | 먼저 확인할 것 |
-| --- | --- |
-| config를 찾지 못함 | `--cwd`가 `remix.config.ts/js`가 있는 디렉터리인지 확인합니다. |
-| entry/style 없음 | config의 상대 경로와 실제 파일명을 확인합니다. |
-| generated JS entry 없음 | Vite output을 바꾸는 사용자 설정을 확인합니다. |
-| Android device 없음 | `adb devices`와 USB debugging 승인을 확인합니다. |
-| package 없음과 `--no-build` | `npm run build` 후 다시 배포합니다. |
-| `run-as` 실패 | 설치된 Host가 현재 개발 deploy 흐름을 허용하는 build인지 확인합니다. |
+| 오류 유형                   | 먼저 확인할 것                                                       |
+| --------------------------- | -------------------------------------------------------------------- |
+| config를 찾지 못함          | `--cwd`가 `remix.config.ts/js`가 있는 디렉터리인지 확인합니다.       |
+| entry/style 없음            | config의 상대 경로와 실제 파일명을 확인합니다.                       |
+| generated JS entry 없음     | Vite output을 바꾸는 사용자 설정을 확인합니다.                       |
+| Android device 없음         | `adb devices`와 USB debugging 승인을 확인합니다.                     |
+| package 없음과 `--no-build` | `npm run build` 후 다시 배포합니다.                                  |
+| `run-as` 실패               | 설치된 Host가 현재 개발 deploy 흐름을 허용하는 build인지 확인합니다. |
 
 ## 관련 문서
 
 - [빠른 시작](../getting-started/quick-start.md)
 - [Android Host로 배포](../getting-started/deploy-to-android.md)
 - [프로젝트 설정](configuration.md)
+- [Constants](constants.md)
 - [아키텍처](../concepts/architecture.md)
 - [프로젝트 패키지](../concepts/project-package.md)
 - [문제 해결](../guides/troubleshooting.md)

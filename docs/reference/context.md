@@ -17,6 +17,7 @@ export const mount: RemixAppMount = async (container, context) => {
 | 영역 | 용도 |
 | --- | --- |
 | `context.project` | 현재 프로젝트 metadata, manifest, reset |
+| `context.constants` | Host가 결정한 현재 기기의 Constant 값 |
 | `context.resources` | `.remixprj`의 `resources/` URL 생성 |
 | `context.device` | 화면, 상태, 입력, 오디오, 진동 |
 | `context.events` | 기기 상태, key, lifecycle, MQTT event 구독 |
@@ -34,6 +35,19 @@ await context.project.reset();
 ```
 
 `reset()`은 Host APK를 종료하지 않고 현재 프로젝트만 정리한 뒤 다시 mount합니다. reset 호출 뒤에는 기존 DOM이나 비동기 작업이 계속 유효하다고 가정하지 마세요.
+
+## constants
+
+`context.constants`는 Host가 기기 override와 프로젝트 default를 합쳐 결정한 읽기 전용 문자열 객체입니다.
+
+```ts
+console.log(context.constants.deviceId);
+console.log(context.constants.brokerHost);
+```
+
+기기 override가 default보다 우선합니다. 둘 다 없는 optional Constant는 객체에 포함되지 않습니다. 프로젝트 코드는 이 객체를 변경하거나 저장할 수 없으며 값 변경은 Host admin UI에서 수행합니다.
+
+선언, required 시작 조건, `{{Constants.id}}` 치환과 dev 환경 제한은 [Constants 레퍼런스](constants.md)를 참고하세요.
 
 ## resources
 
@@ -217,6 +231,7 @@ context.host.panel.status.setText("scene", "Airport");
 
 - [아키텍처](../concepts/architecture.md)
 - [프로젝트 설정](configuration.md)
+- [Constants](constants.md)
 - [이벤트와 상태](events.md)
 - [MQTT](mqtt.md)
 - [기기 제어](../guides/device-control.md)
