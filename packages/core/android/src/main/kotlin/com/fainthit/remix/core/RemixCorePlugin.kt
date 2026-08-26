@@ -20,6 +20,7 @@ import com.fainthit.remix.core.actions.RemixNativeActionRegistry
 import com.fainthit.remix.core.nativeevents.RemixNativeEventConfigLoader
 import com.fainthit.remix.core.nativeevents.RemixNativeEventEngine
 import com.fainthit.remix.core.project.RemixProjectConfigRepository
+import com.fainthit.remix.core.project.RemixProjectConfiguration
 import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
@@ -45,6 +46,7 @@ class RemixCorePlugin : Plugin() {
     private var keyboardStatusRequiredByNativeEvents = false
     private lateinit var nativeActions: RemixNativeActionRegistry
     private lateinit var nativeEventEngine: RemixNativeEventEngine
+    private var projectRuntimeMounted = false
     private val mqttListener = object : RemixMqttRuntime.Listener {
         override fun onStatus(status: RemixMqttStatus) {
             val payload = mqttStatusObject(status)
@@ -111,6 +113,7 @@ class RemixCorePlugin : Plugin() {
     @PluginMethod
     fun setProjectRuntimeState(call: PluginCall) {
         val mounted = call.getBoolean("mounted", false) == true
+        projectRuntimeMounted = mounted
         if (mounted) reloadNativeEventConfig()
         nativeEventEngine.setProjectMounted(mounted)
         syncNativeEventSources(mounted)
@@ -322,14 +325,47 @@ class RemixCorePlugin : Plugin() {
     }
 
     @PluginMethod
-    fun getActiveProjectManifest(call: PluginCall) {
+    fun getActiveProjectConfiguration(call: PluginCall) {
         try {
-            val manifest = RemixProjectConfigRepository.loadActiveManifest(context)
-            call.resolve(JSObject().apply {
-                put("manifest", manifest)
-            })
+            call.resolve(projectConfigurationObject(
+                RemixProjectConfigRepository.loadActiveConfiguration(context),
+            ))
         } catch (error: Exception) {
-            call.reject("Failed to load active project manifest", error)
+            call.reject("Failed to load active project configuration", error)
+        }
+    }
+
+    @PluginMethod
+    fun setActiveProjectConstants(call: PluginCall) {
+        val projectId = call.getString("projectId")
+        val revision = call.getInt("revision")
+        val overrideValues = call.getObject("overrides")
+        if (projectId.isNullOrEmpty() || revision == null || overrideValues == null) {
+            call.reject("Project ID, revision, and overrides are required")
+            return
+        }
+
+        try {
+            val overrides = linkedMapOf<String, String>()
+            val ids = overrideValues.keys()
+            while (ids.hasNext()) {
+                val id = ids.next()
+                val value = overrideValues.opt(id)
+                require(value is String) { "Project constant $id must be a string" }
+                overrides[id] = value
+            }
+            val configuration = RemixProjectConfigRepository.saveActiveConstants(
+                context,
+                projectId,
+                revision,
+                overrides,
+            )
+            RemixMqttRuntime.reload(context)
+            reloadNativeEventConfig()
+            syncNativeEventSources(projectRuntimeMounted)
+            call.resolve(projectConfigurationObject(configuration))
+        } catch (error: Exception) {
+            call.reject("Failed to save active project constants", error)
         }
     }
 
@@ -570,6 +606,27 @@ class RemixCorePlugin : Plugin() {
             put("installed", project.installed)
             project.directory?.let { put("directory", it) }
             project.url?.let { put("url", it) }
+        }
+    }
+
+    private fun projectConfigurationObject(configuration: RemixProjectConfiguration): JSObject {
+        return JSObject().apply {
+            put("status", configuration.status)
+            put("project", configuration.project)
+            put("projectId", configuration.projectId)
+            put("revision", configuration.revision)
+            put("missing", JSArray(configuration.missing))
+            put("constants", JSArray(configuration.constants.map { constant ->
+                JSObject().apply {
+                    put("id", constant.id)
+                    put("required", constant.required)
+                    put("hasDefault", constant.hasDefault)
+                    constant.defaultValue?.let { put("default", it) }
+                    put("hasOverride", constant.hasOverride)
+                    constant.value?.let { put("value", it) }
+                }
+            }))
+            configuration.manifest?.let { put("manifest", it) }
         }
     }
 

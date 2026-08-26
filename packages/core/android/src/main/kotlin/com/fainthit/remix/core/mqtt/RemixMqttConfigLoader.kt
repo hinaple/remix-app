@@ -13,10 +13,14 @@ object RemixMqttConfigLoader {
 
     fun load(context: Context): RemixMqttConfig {
         val manifest = try {
-            RemixProjectConfigRepository.loadActiveManifest(context)
+            RemixProjectConfigRepository.loadReadyManifest(context)
         } catch (_: IllegalArgumentException) {
             return RemixMqttConfig(emptyMap())
-        }
+        } ?: return RemixMqttConfig(emptyMap())
+        return parse(context, manifest)
+    }
+
+    fun parse(context: Context, manifest: JSONObject): RemixMqttConfig {
         val mqtt = manifest.optJSONObject("mqtt") ?: return RemixMqttConfig(emptyMap())
         val connections = mqtt.optJSONObject("connections")
             ?: throw IllegalArgumentException("MQTT connections must be an object")

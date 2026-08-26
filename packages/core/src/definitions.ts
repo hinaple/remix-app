@@ -60,9 +60,38 @@ export interface RemixInstallProjectPackageResult {
   url: string;
 }
 
-export interface RemixActiveProjectManifestResult {
-  manifest: Record<string, unknown>;
+export interface RemixProjectConstantState {
+  id: string;
+  required: boolean;
+  hasDefault: boolean;
+  default?: string;
+  hasOverride: boolean;
+  value?: string;
 }
+
+export interface RemixProjectConfigurationBase {
+  project: string;
+  projectId: string;
+  revision: number;
+  constants: RemixProjectConstantState[];
+}
+
+export interface RemixProjectConfigurationReady
+  extends RemixProjectConfigurationBase {
+  status: "ready";
+  manifest: Record<string, unknown>;
+  missing: [];
+}
+
+export interface RemixProjectConfigurationRequired
+  extends RemixProjectConfigurationBase {
+  status: "needsConfiguration";
+  missing: string[];
+}
+
+export type RemixProjectConfiguration =
+  | RemixProjectConfigurationReady
+  | RemixProjectConfigurationRequired;
 
 export type RemixScreenOrientation =
   | "portrait"
@@ -171,7 +200,12 @@ export interface RemixCorePlugin {
     path: string;
   }): Promise<RemixInstallProjectPackageResult>;
   getActiveProject(): Promise<RemixInstalledProject>;
-  getActiveProjectManifest(): Promise<RemixActiveProjectManifestResult>;
+  getActiveProjectConfiguration(): Promise<RemixProjectConfiguration>;
+  setActiveProjectConstants(options: {
+    projectId: string;
+    revision: number;
+    overrides: Record<string, string>;
+  }): Promise<RemixProjectConfigurationReady>;
   consumeLaunchProjectInstall(): Promise<RemixLaunchProjectInstall>;
   pickProjectPackage(): Promise<RemixPickedProjectPackage>;
   exitApp(): Promise<void>;

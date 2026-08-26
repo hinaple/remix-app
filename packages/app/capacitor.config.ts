@@ -4,6 +4,9 @@ const config: CapacitorConfig = {
   appId: "com.fainthit.remix",
   appName: "Remix",
   webDir: "dist",
+  android: {
+    webContentsDebuggingEnabled: true,
+  },
   plugins: {
     SystemBars: {
       hidden: true,

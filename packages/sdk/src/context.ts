@@ -42,6 +42,14 @@ export interface RemixAppContext {
   project: RemixProjectContext
 
   /**
+   * Effective per-device constant values resolved by the Host.
+   *
+   * Device overrides take precedence over project defaults. Optional constants
+   * without either value are omitted from this readonly object.
+   */
+  constants: RemixConstantsContext
+
+  /**
    * Access to files inside the project's built `resources/` directory.
    */
   resources: RemixResourceContext
@@ -66,3 +74,6 @@ export interface RemixAppContext {
    */
   host: RemixHostContext
 }
+
+/** Effective project constants exposed to mounted project code. */
+export type RemixConstantsContext = Readonly<Record<string, string>>

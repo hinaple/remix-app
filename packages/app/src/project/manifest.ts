@@ -1,4 +1,8 @@
-import { RemixCore } from "@remixapp/core";
+import {
+  RemixCore,
+  type RemixProjectConfigurationReady,
+  type RemixProjectConfigurationRequired,
+} from "@remixapp/core";
 import {
   REMIX_MIN_RUNTIME_API_VERSION,
   REMIX_PROJECT_FORMAT_VERSION,
@@ -6,8 +10,26 @@ import {
   type RemixProjectManifest,
 } from "@remixapp/sdk";
 
-export async function loadManifest(): Promise<RemixProjectManifest> {
-  const { manifest: value } = await RemixCore.getActiveProjectManifest();
+export class ProjectConfigurationRequiredError extends Error {
+  constructor(
+    readonly configuration: RemixProjectConfigurationRequired,
+  ) {
+    super(`Required project constants are missing: ${configuration.missing.join(", ")}`);
+    this.name = "ProjectConfigurationRequiredError";
+  }
+}
+
+export interface LoadedProjectManifest {
+  manifest: RemixProjectManifest;
+  configuration: RemixProjectConfigurationReady;
+}
+
+export async function loadManifest(): Promise<LoadedProjectManifest> {
+  const configuration = await RemixCore.getActiveProjectConfiguration();
+  if (configuration.status === "needsConfiguration") {
+    throw new ProjectConfigurationRequiredError(configuration);
+  }
+  const value = configuration.manifest;
 
   if (!isRecord(value) || !hasManifestShape(value)) {
     throw new Error(
@@ -28,11 +50,12 @@ export async function loadManifest(): Promise<RemixProjectManifest> {
     "runtime API",
   );
 
-  return {
+  const manifest = {
     ...value,
     formatVersion,
     runtimeApiVersion,
   } as unknown as RemixProjectManifest;
+  return { manifest, configuration };
 }
 
 function hasManifestShape(value: Record<string, unknown>): boolean {

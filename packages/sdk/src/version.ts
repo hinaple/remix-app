@@ -5,7 +5,7 @@ export const REMIX_TOOLCHAIN_VERSION = "0.2.0";
 export const REMIX_PROJECT_FORMAT_VERSION = 1;
 
 /** Version of the context, event, and action contract required by a project. */
-export const REMIX_RUNTIME_API_VERSION = 2;
+export const REMIX_RUNTIME_API_VERSION = 3;
 
 /** Oldest runtime API contract implemented by this Host release. */
 export const REMIX_MIN_RUNTIME_API_VERSION = 2;

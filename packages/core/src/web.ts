@@ -2,7 +2,6 @@ import { WebPlugin } from "@capacitor/core";
 
 import type {
   RemixBatteryStatus,
-  RemixActiveProjectManifestResult,
   RemixCorePlugin,
   RemixDevicePolicyState,
   RemixInstalledProject,
@@ -14,6 +13,8 @@ import type {
   RemixCoreMqttStatuses,
   RemixNetworkStatus,
   RemixPickedProjectPackage,
+  RemixProjectConfiguration,
+  RemixProjectConfigurationReady,
   RemixKioskResult,
   RemixScreenStatus,
 } from "./definitions.js";
@@ -114,8 +115,12 @@ export class RemixCoreWeb extends WebPlugin implements RemixCorePlugin {
     return { installed: false };
   }
 
-  async getActiveProjectManifest(): Promise<RemixActiveProjectManifestResult> {
-    throw new Error("Active project manifests are only available on Android.");
+  async getActiveProjectConfiguration(): Promise<RemixProjectConfiguration> {
+    throw new Error("Active project configuration is only available on Android.");
+  }
+
+  async setActiveProjectConstants(): Promise<RemixProjectConfigurationReady> {
+    throw new Error("Project constants are only available on Android.");
   }
 
   async consumeLaunchProjectInstall(): Promise<RemixLaunchProjectInstall> {

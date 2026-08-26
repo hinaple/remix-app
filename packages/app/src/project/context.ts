@@ -1,6 +1,7 @@
 import type { EventBus } from "@remixapp/runtime";
 import type {
   RemixAppContext,
+  RemixConstantsContext,
   RemixHostPanelContext,
   RemixProjectManifest,
 } from "@remixapp/sdk";
@@ -18,6 +19,7 @@ export interface ProjectContextOptions {
   events: EventBus;
   nativeEvents: NativeProjectEventBindings;
   actions: ProjectActionClient;
+  constants: RemixConstantsContext;
 }
 
 export function createProjectContext(
@@ -30,6 +32,7 @@ export function createProjectContext(
       manifest: options.manifest,
       reset: () => options.actions.invoke("project.reset"),
     },
+    constants: Object.freeze({ ...options.constants }),
     resources: {
       url: (resourcePath) =>
         new URL(resourcePath, new URL("resources/", options.baseUrl)).href,

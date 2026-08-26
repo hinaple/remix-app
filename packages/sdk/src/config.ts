@@ -22,6 +22,13 @@ export interface RemixConfig {
   name: string;
 
   /**
+   * Stable identity used by the Host for project-scoped device data.
+   *
+   * When omitted, the Host falls back to `name` for backward compatibility.
+   */
+  projectId?: string;
+
+  /**
    * Project version used in the built manifest and output package file name.
    */
   version: string;
@@ -70,6 +77,14 @@ export interface RemixConfig {
   nativeEvents?: RemixNativeEventsConfig;
 
   /**
+   * Per-device string values reserved by this project.
+   *
+   * The Android Host stores overrides for the active project and replaces
+   * `{{Constants.id}}` templates in supported runtime configuration fields.
+   */
+  constants?: RemixConstantDefinitions;
+
+  /**
    * Vite configuration merged into the CLI's internal build configuration.
    *
    * The CLI may override settings that would break the remixApp package
@@ -101,6 +116,9 @@ export interface RemixProjectManifest {
    * Project name copied from the source config.
    */
   name: string;
+
+  /** Stable identity for project-scoped device data. Legacy manifests may omit it. */
+  projectId?: string;
 
   /**
    * Project version copied from the source config.
@@ -139,7 +157,27 @@ export interface RemixProjectManifest {
 
   /** Normalized native event rules executed by the Android Host. */
   nativeEvents?: RemixNativeEventsProjectConfig;
+
+  /** Per-device constant definitions copied from the source config. */
+  constants?: RemixConstantDefinitions;
 }
+
+/** A string constant that may be overridden independently on each device. */
+export interface RemixConstantDefinition {
+  /** Value used when the device does not have an override. */
+  default?: string;
+
+  /**
+   * Blocks project startup when no override or default is available.
+   *
+   * This defaults to `false`. A definition with a default is always runnable,
+   * so `required` has no additional effect in that case.
+   */
+  required?: boolean;
+}
+
+/** Constant definitions keyed by the identifier used in templates. */
+export type RemixConstantDefinitions = Record<string, RemixConstantDefinition>;
 
 /**
  * Fixed screen policy requested by a project.

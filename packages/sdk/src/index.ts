@@ -23,6 +23,8 @@ export type {
 } from "./native-events.js";
 
 export type {
+  RemixConstantDefinition,
+  RemixConstantDefinitions,
   RemixConfig,
   RemixKeyboardAdjust,
   RemixKeyboardPolicy,
@@ -39,6 +41,7 @@ export type {
   RemixAppContext,
   RemixAppMount,
   RemixAppUnmount,
+  RemixConstantsContext,
 } from "./context";
 
 export type {

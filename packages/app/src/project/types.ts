@@ -1,4 +1,5 @@
 import type { EventBus, SubscriptionScope } from "@remixapp/runtime";
+import type { RemixProjectConfigurationReady } from "@remixapp/core";
 import type {
   RemixAppMount,
   RemixAppUnmount,
@@ -28,6 +29,7 @@ export interface LoadedProject {
 export interface RemixProjectStartResult {
   baseUrl: string;
   manifest: RemixProjectManifest;
+  configuration: RemixProjectConfigurationReady;
 }
 
 export interface RemixProjectRuntimeOptions {

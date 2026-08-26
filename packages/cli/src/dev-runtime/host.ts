@@ -195,6 +195,8 @@ class RemixDevHost implements RemixDevHostController {
         manifest: this.options.manifest,
         reset: () => invoke("project.reset"),
       },
+      // Device-specific Constants resolution remains Native-only for now.
+      constants: Object.freeze({}),
       resources: {
         url: (resourcePath) =>
           new URL(`resources/${resourcePath}`, window.location.href).href,

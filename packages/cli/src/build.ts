@@ -47,6 +47,12 @@ export async function buildProject(options: BuildOptions): Promise<string> {
   const cwd = path.resolve(options.cwd);
   const { config } = await loadRemixConfig(cwd);
 
+  if (config.projectId === undefined) {
+    console.warn(
+      `Warning: remix config field "projectId" is missing; project name "${config.name}" will be used for project-scoped device data.`,
+    );
+  }
+
   const entryFile = path.resolve(cwd, config.entry);
   const styleFiles = (config.styles ?? []).map((style) =>
     path.resolve(cwd, style),
@@ -173,12 +179,14 @@ async function stagePackage(
   paths: BuildPaths,
   config: {
     name: string;
+    projectId?: string;
     version: string;
     kiosk?: boolean;
     screen?: RemixProjectManifest["screen"];
     input?: RemixProjectManifest["input"];
     mqtt?: RemixConfig["mqtt"];
     nativeEvents?: RemixConfig["nativeEvents"];
+    constants?: RemixConfig["constants"];
   },
 ): Promise<void> {
   await fs.cp(paths.viteOutDir, paths.packageSrcDir, { recursive: true });
@@ -240,12 +248,14 @@ async function writeProjectManifest(
   packageDir: string,
   config: {
     name: string;
+    projectId?: string;
     version: string;
     kiosk?: boolean;
     screen?: RemixProjectManifest["screen"];
     input?: RemixProjectManifest["input"];
     mqtt?: RemixConfig["mqtt"];
     nativeEvents?: RemixConfig["nativeEvents"];
+    constants?: RemixConfig["constants"];
   },
 ): Promise<void> {
   const manifest = createProjectManifest(config);
@@ -259,12 +269,14 @@ async function writeProjectManifest(
 
 export function createProjectManifest(config: {
   name: string;
+  projectId?: string;
   version: string;
   kiosk?: boolean;
   screen?: RemixProjectManifest["screen"];
   input?: RemixProjectManifest["input"];
   mqtt?: RemixConfig["mqtt"];
   nativeEvents?: RemixConfig["nativeEvents"];
+  constants?: RemixConfig["constants"];
 }): RemixProjectManifest {
   const manifest: RemixProjectManifest = {
     formatVersion: REMIX_PROJECT_FORMAT_VERSION,
@@ -274,9 +286,11 @@ export function createProjectManifest(config: {
       sdk: REMIX_TOOLCHAIN_VERSION,
     },
     name: config.name,
+    ...(config.projectId === undefined ? {} : { projectId: config.projectId }),
     version: config.version,
     entry: "src/index.js",
     styles: ["src/style.css"],
+    ...(config.constants === undefined ? {} : { constants: config.constants }),
     ...(config.kiosk === undefined ? {} : { kiosk: config.kiosk }),
     ...(config.screen === undefined ? {} : { screen: config.screen }),
     ...(config.input === undefined ? {} : { input: config.input }),

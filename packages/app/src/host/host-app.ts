@@ -1,11 +1,16 @@
 import { Capacitor } from "@capacitor/core";
 import { RemixCore } from "@remixapp/core";
-import type { RemixDevicePolicyState } from "@remixapp/core";
+import type {
+  RemixDevicePolicyState,
+  RemixProjectConfiguration,
+  RemixProjectConfigurationReady,
+} from "@remixapp/core";
 import type { RemixProjectManifest } from "@remixapp/sdk";
 
 import { createAdminKeyHandler } from "./admin-keys.js";
 import { createHostUi, type HostUi } from "./host-ui.js";
 import { RemixProjectRuntime } from "../project/runtime.js";
+import { ProjectConfigurationRequiredError } from "../project/manifest.js";
 import type { RemixProjectStartResult } from "../project/types.js";
 import {
   nativeFileUrlToWebViewUrl,
@@ -131,8 +136,9 @@ async function startInitialProject(
   ui: HostUi,
   runtime: RemixProjectRuntime,
 ): Promise<void> {
+  let source: ProjectSource | undefined;
   try {
-    const source = await resolveProjectSource();
+    source = await resolveProjectSource();
 
     if (!source) {
       ui.hostStatus.textContent = "No project installed";
@@ -146,12 +152,16 @@ async function startInitialProject(
 
     const result = await runtime.start(source.url);
     ui.hostStatus.textContent = "Project mounted";
-    await renderHostInfo(ui, result, source);
+    await renderHostInfo(ui, runtime, result, source);
 
     if (shouldShowAdminOnStart()) {
       ui.showAdminPage();
     }
   } catch (error) {
+    if (error instanceof ProjectConfigurationRequiredError && source) {
+      await showConfigurationRequired(ui, runtime, source, error.configuration);
+      return;
+    }
     const message = error instanceof Error ? error.message : String(error);
     ui.hostStatus.textContent = `Project failed: ${message}`;
     ui.hostErrorInfo.textContent = message;
@@ -220,23 +230,26 @@ async function installProjectFromPath(
   ui.projectImportButton.disabled = true;
   ui.hostStatus.textContent = "Installing project...";
 
+  let source: ProjectSource | undefined;
   try {
     const installed = await RemixCore.installProjectPackage({ path });
 
     ui.hostStatus.textContent = "Loading project...";
     const projectUrl = nativeFileUrlToWebViewUrl(installed.url);
+    source = { label: options.label, url: projectUrl };
     const result = await runtime.start(projectUrl);
     ui.hostStatus.textContent = "Project mounted";
-    await renderHostInfo(ui, result, {
-      label: options.label,
-      url: projectUrl,
-    });
+    await renderHostInfo(ui, runtime, result, source);
     if (options.showAdminAfterMount) {
       ui.showAdminPage();
     } else {
       ui.showProjectPage();
     }
   } catch (error) {
+    if (error instanceof ProjectConfigurationRequiredError && source) {
+      await showConfigurationRequired(ui, runtime, source, error.configuration);
+      return;
+    }
     const message = error instanceof Error ? error.message : String(error);
     ui.hostStatus.textContent = `Project install failed: ${message}`;
     ui.hostErrorInfo.textContent = message;
@@ -277,6 +290,7 @@ async function exitApp(
 
 async function renderHostInfo(
   ui: HostUi,
+  runtime: RemixProjectRuntime,
   result: RemixProjectStartResult,
   source: ProjectSource,
 ): Promise<void> {
@@ -288,6 +302,134 @@ async function renderHostInfo(
   ui.hostDeviceInfo.textContent = formatDeviceInfo(devicePolicyState);
   ui.hostPolicyInfo.textContent = formatPolicyInfo(result.manifest);
   ui.hostErrorInfo.textContent = "None";
+  ui.resetButton.disabled = false;
+  renderConstantsEditor(ui, runtime, source, result.configuration);
+}
+
+async function showConfigurationRequired(
+  ui: HostUi,
+  runtime: RemixProjectRuntime,
+  source: ProjectSource,
+  configuration: RemixProjectConfiguration,
+): Promise<void> {
+  const missing = configuration.status === "needsConfiguration"
+    ? configuration.missing.join(", ")
+    : "";
+  ui.projectTitle.textContent = configuration.project;
+  ui.hostStatus.textContent = "Project constants required";
+  ui.hostProjectInfo.textContent = configuration.project;
+  ui.hostSourceInfo.textContent = `${source.label}: ${source.url}`;
+  ui.hostDeviceInfo.textContent = formatDeviceInfo(await getDevicePolicyState());
+  ui.hostPolicyInfo.textContent = "Waiting for required constants";
+  ui.hostErrorInfo.textContent = `Missing constants: ${missing}`;
+  ui.resetButton.disabled = true;
+  renderConstantsEditor(ui, runtime, source, configuration);
+  ui.showAdminPage();
+}
+
+function renderConstantsEditor(
+  ui: HostUi,
+  runtime: RemixProjectRuntime,
+  source: ProjectSource,
+  configuration: RemixProjectConfiguration,
+): void {
+  ui.projectConstantsSection.hidden = configuration.constants.length === 0;
+  ui.projectConstantsFields.replaceChildren();
+  ui.projectConstantsError.textContent = "";
+
+  for (const constant of configuration.constants) {
+    const label = document.createElement("label");
+    const title = document.createElement("span");
+    title.textContent = constant.id;
+    const detail = document.createElement("small");
+    detail.textContent = constant.hasDefault
+      ? `Default: ${constant.default ?? ""}`
+      : constant.required
+        ? "Required"
+        : "Optional";
+    title.append(detail);
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.name = constant.id;
+    input.value = constant.value ?? "";
+    input.dataset.constantId = constant.id;
+    input.addEventListener("input", () => delete input.dataset.useDefault);
+    label.append(title, input);
+    ui.projectConstantsFields.append(label);
+  }
+
+  ui.projectConstantsResetButton.onclick = () => {
+    for (const constant of configuration.constants) {
+      const input = findConstantInput(ui, constant.id);
+      input.value = constant.default ?? "";
+      input.dataset.useDefault = "true";
+    }
+    ui.projectConstantsError.textContent = "";
+  };
+
+  ui.projectConstantsForm.onsubmit = (event) => {
+    event.preventDefault();
+    void saveConstantsAndRestart(ui, runtime, source, configuration);
+  };
+}
+
+async function saveConstantsAndRestart(
+  ui: HostUi,
+  runtime: RemixProjectRuntime,
+  source: ProjectSource,
+  configuration: RemixProjectConfiguration,
+): Promise<void> {
+  ui.projectConstantsSaveButton.disabled = true;
+  ui.projectConstantsResetButton.disabled = true;
+  ui.projectImportButton.disabled = true;
+  ui.projectConstantsError.textContent = "";
+  ui.hostStatus.textContent = "Saving constants...";
+
+  let saved: RemixProjectConfigurationReady | undefined;
+  try {
+    const overrides: Record<string, string> = {};
+    for (const constant of configuration.constants) {
+      const input = findConstantInput(ui, constant.id);
+      if (input.dataset.useDefault === "true") continue;
+      if (constant.hasDefault && input.value === constant.default) continue;
+      if (!constant.hasDefault && !constant.required && !constant.hasOverride && input.value === "") {
+        continue;
+      }
+      overrides[constant.id] = input.value;
+    }
+
+    saved = await RemixCore.setActiveProjectConstants({
+      projectId: configuration.projectId,
+      revision: configuration.revision,
+      overrides,
+    });
+    const result = await runtime.start(source.url);
+    await renderHostInfo(ui, runtime, result, source);
+    ui.hostStatus.textContent = "Project mounted";
+    ui.showProjectPage();
+  } catch (error) {
+    if (saved) {
+      renderConstantsEditor(ui, runtime, source, saved);
+    }
+    const message = error instanceof Error ? error.message : String(error);
+    ui.projectConstantsError.textContent = message;
+    ui.hostStatus.textContent = `Constants save failed: ${message}`;
+    ui.hostErrorInfo.textContent = message;
+    console.error(error);
+  } finally {
+    ui.projectConstantsSaveButton.disabled = false;
+    ui.projectConstantsResetButton.disabled = false;
+    ui.projectImportButton.disabled = false;
+  }
+}
+
+function findConstantInput(ui: HostUi, id: string): HTMLInputElement {
+  const input = Array.from(
+    ui.projectConstantsFields.querySelectorAll<HTMLInputElement>("input[data-constant-id]"),
+  ).find((candidate) => candidate.dataset.constantId === id);
+  if (!input) throw new Error(`Missing constant input: ${id}`);
+  return input;
 }
 
 async function getDevicePolicyState(): Promise<

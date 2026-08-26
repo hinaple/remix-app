@@ -7,7 +7,6 @@ export const RemixCore = registerPlugin<RemixCorePlugin>("RemixCore", {
 });
 
 export type {
-  RemixActiveProjectManifestResult,
   RemixCoreKeyEvent,
   RemixCoreMqttConnectionState,
   RemixCoreMqttMessageEvent,
@@ -25,5 +24,9 @@ export type {
   RemixLaunchProjectInstall,
   RemixPickedProjectPackage,
   RemixProjectInstallRequested,
+  RemixProjectConstantState,
+  RemixProjectConfiguration,
+  RemixProjectConfigurationReady,
+  RemixProjectConfigurationRequired,
   RemixScreenOrientation,
 } from "./definitions.js";

@@ -24,10 +24,14 @@ data class RemixConfiguredAction(
 object RemixNativeEventConfigLoader {
     fun load(context: Context): RemixNativeEventConfig {
         val manifest = try {
-            RemixProjectConfigRepository.loadActiveManifest(context)
+            RemixProjectConfigRepository.loadReadyManifest(context)
         } catch (_: IllegalArgumentException) {
             return RemixNativeEventConfig(emptyList())
-        }
+        } ?: return RemixNativeEventConfig(emptyList())
+        return parse(manifest)
+    }
+
+    fun parse(manifest: JSONObject): RemixNativeEventConfig {
         val nativeEvents = manifest.optJSONObject("nativeEvents")
             ?: return RemixNativeEventConfig(emptyList())
         val values = nativeEvents.optJSONArray("rules")

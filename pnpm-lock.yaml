@@ -137,6 +137,21 @@ importers:
         specifier: ^7.0.0
         version: 7.3.6(@types/node@24.13.2)
 
+  projects/constants-example:
+    devDependencies:
+      '@remixapp/cli':
+        specifier: workspace:*
+        version: link:../../packages/cli
+      '@remixapp/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+      vite:
+        specifier: ^7.0.0
+        version: 7.3.6(@types/node@24.13.2)
+
   projects/example:
     devDependencies:
       '@remixapp/cli':

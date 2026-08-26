@@ -37,7 +37,7 @@ export class RemixProjectRuntime {
     clearHostPanel(this.options.hostPanel);
 
     const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
-    const manifest = await loadManifest();
+    const { manifest, configuration } = await loadManifest();
     const subscriptions = new SubscriptionScope();
     const events = new EventBus(subscriptions);
     const hostPanel = this.options.hostPanel ?? createNoopHostPanelContext();
@@ -54,6 +54,11 @@ export class RemixProjectRuntime {
       );
       const context = createProjectContext({
         manifest,
+        constants: Object.fromEntries(
+          configuration.constants.flatMap((constant) =>
+            constant.value === undefined ? [] : [[constant.id, constant.value]],
+          ),
+        ),
         baseUrl: normalizedBaseUrl,
         events,
         nativeEvents,
@@ -86,6 +91,7 @@ export class RemixProjectRuntime {
       return {
         baseUrl: normalizedBaseUrl,
         manifest,
+        configuration,
       };
     } catch (error) {
       await RemixCore.setProjectRuntimeState({ mounted: false }).catch(

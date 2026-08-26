@@ -1,7 +1,11 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { normalizeRemixActionCall, type RemixConfig } from "@remixapp/sdk";
+import {
+  normalizeRemixActionCall,
+  type RemixConfig,
+  type RemixConstantDefinitions,
+} from "@remixapp/sdk";
 import {
   loadConfigFromFile,
   type ConfigEnv,
@@ -12,6 +16,8 @@ import {
 import { fail } from "./errors.js";
 
 const CONFIG_FILES = ["remix.config.ts", "remix.config.js"] as const;
+const CONSTANT_ID_PATTERN = /^[A-Za-z][A-Za-z0-9_]*$/;
+const CONSTANT_TEMPLATE_PATTERN = /\{\{Constants\.([A-Za-z][A-Za-z0-9_]*)\}\}/g;
 
 export interface LoadedRemixConfig {
   config: RemixConfig;
@@ -75,6 +81,13 @@ function validateRemixConfig(value: unknown, cwd: string): RemixConfig {
     fail('remix config field "name" must be a non-empty string');
   }
 
+  if (
+    value.projectId !== undefined &&
+    (typeof value.projectId !== "string" || value.projectId.length === 0)
+  ) {
+    fail('remix config field "projectId" must be a non-empty string');
+  }
+
   if (typeof value.version !== "string" || !isSemanticVersion(value.version)) {
     fail('remix config field "version" must be a semantic version such as 1.0.0');
   }
@@ -91,27 +104,39 @@ function validateRemixConfig(value: unknown, cwd: string): RemixConfig {
     fail('remix config field "kiosk" must be a boolean');
   }
 
-  if (value.screen !== undefined) {
-    if (!isRecord(value.screen)) {
+  const constants = validateConstants(value.constants);
+  validateRuntimeTemplates(
+    {
+      screen: value.screen,
+      input: value.input,
+      mqtt: value.mqtt,
+      nativeEvents: value.nativeEvents,
+    },
+    constants,
+  );
+  const runtimeValue = materializeRuntimeTemplates(value, constants);
+
+  if (runtimeValue.screen !== undefined) {
+    if (!isRecord(runtimeValue.screen)) {
       fail('remix config field "screen" must be an object');
     }
 
     if (
-      value.screen.autoBrightness !== undefined &&
-      typeof value.screen.autoBrightness !== "boolean"
+      runtimeValue.screen.autoBrightness !== undefined &&
+      typeof runtimeValue.screen.autoBrightness !== "boolean"
     ) {
       fail('remix config field "screen.autoBrightness" must be a boolean');
     }
 
-    if (value.screen.keyboard !== undefined) {
-      if (!isRecord(value.screen.keyboard)) {
+    if (runtimeValue.screen.keyboard !== undefined) {
+      if (!isRecord(runtimeValue.screen.keyboard)) {
         fail('remix config field "screen.keyboard" must be an object');
       }
 
       if (
-        value.screen.keyboard.adjust !== undefined &&
-        (typeof value.screen.keyboard.adjust !== "string" ||
-          !["resize", "pan", "nothing"].includes(value.screen.keyboard.adjust))
+        runtimeValue.screen.keyboard.adjust !== undefined &&
+        (typeof runtimeValue.screen.keyboard.adjust !== "string" ||
+          !["resize", "pan", "nothing"].includes(runtimeValue.screen.keyboard.adjust))
       ) {
         fail(
           'remix config field "screen.keyboard.adjust" must be one of: resize, pan, nothing',
@@ -119,8 +144,8 @@ function validateRemixConfig(value: unknown, cwd: string): RemixConfig {
       }
 
       if (
-        value.screen.keyboard.nativeAdjust !== undefined &&
-        typeof value.screen.keyboard.nativeAdjust !== "boolean"
+        runtimeValue.screen.keyboard.nativeAdjust !== undefined &&
+        typeof runtimeValue.screen.keyboard.nativeAdjust !== "boolean"
       ) {
         fail(
           'remix config field "screen.keyboard.nativeAdjust" must be a boolean',
@@ -128,15 +153,15 @@ function validateRemixConfig(value: unknown, cwd: string): RemixConfig {
       }
 
       if (
-        value.screen.keyboard.state !== undefined &&
-        (typeof value.screen.keyboard.state !== "string" ||
+        runtimeValue.screen.keyboard.state !== undefined &&
+        (typeof runtimeValue.screen.keyboard.state !== "string" ||
           ![
             "unspecified",
             "hidden",
             "alwaysHidden",
             "visible",
             "alwaysVisible",
-          ].includes(value.screen.keyboard.state))
+          ].includes(runtimeValue.screen.keyboard.state))
       ) {
         fail(
           'remix config field "screen.keyboard.state" must be one of: unspecified, hidden, alwaysHidden, visible, alwaysVisible',
@@ -145,12 +170,12 @@ function validateRemixConfig(value: unknown, cwd: string): RemixConfig {
     }
   }
 
-  if (value.mqtt !== undefined) {
-    validateMqttConfig(value.mqtt);
+  if (runtimeValue.mqtt !== undefined) {
+    validateMqttConfig(runtimeValue.mqtt);
   }
 
-  if (value.nativeEvents !== undefined) {
-    validateNativeEventsConfig(value.nativeEvents);
+  if (runtimeValue.nativeEvents !== undefined) {
+    validateNativeEventsConfig(runtimeValue.nativeEvents);
   }
 
   const config = value as unknown as RemixConfig;
@@ -169,6 +194,124 @@ function validateRemixConfig(value: unknown, cwd: string): RemixConfig {
       );
     }
   }
+}
+
+function validateConstants(value: unknown): RemixConstantDefinitions {
+  if (value === undefined) {
+    return {};
+  }
+  if (!isRecord(value)) {
+    fail('remix config field "constants" must be an object');
+  }
+
+  for (const [id, definition] of Object.entries(value)) {
+    const field = `constants.${id}`;
+    if (!CONSTANT_ID_PATTERN.test(id)) {
+      fail(
+        'remix config constant ids must start with a letter and contain only letters, numbers, and "_"',
+      );
+    }
+    if (!isRecord(definition)) {
+      fail(`remix config field "${field}" must be an object`);
+    }
+    const unknownFields = Object.keys(definition).filter(
+      (name) => name !== "default" && name !== "required",
+    );
+    if (unknownFields.length > 0) {
+      fail(
+        `remix config field "${field}" contains unsupported option: ${unknownFields[0]}`,
+      );
+    }
+    if (definition.default !== undefined && typeof definition.default !== "string") {
+      fail(`remix config field "${field}.default" must be a string`);
+    }
+    if (definition.required !== undefined && typeof definition.required !== "boolean") {
+      fail(`remix config field "${field}.required" must be a boolean`);
+    }
+  }
+
+  return value as RemixConstantDefinitions;
+}
+
+function validateRuntimeTemplates(
+  value: unknown,
+  constants: RemixConstantDefinitions,
+  field = "runtime config",
+): void {
+  if (typeof value === "string") {
+    const referenced = new Set<string>();
+    for (const match of value.matchAll(CONSTANT_TEMPLATE_PATTERN)) {
+      referenced.add(match[1]);
+    }
+    const remainder = value.replace(CONSTANT_TEMPLATE_PATTERN, "");
+    if (remainder.includes("{{Constants.")) {
+      fail(`remix config field "${field}" contains a malformed Constants template`);
+    }
+    for (const id of referenced) {
+      const definition = constants[id];
+      if (!definition) {
+        fail(`remix config field "${field}" references unknown constant: ${id}`);
+      }
+      if (definition.default === undefined && definition.required !== true) {
+        fail(
+          `remix config field "${field}" references optional constant without a default: ${id}`,
+        );
+      }
+    }
+    return;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((item, index) =>
+      validateRuntimeTemplates(item, constants, `${field}[${index}]`),
+    );
+    return;
+  }
+  if (isRecord(value)) {
+    for (const [name, item] of Object.entries(value)) {
+      validateRuntimeTemplates(item, constants, `${field}.${name}`);
+    }
+  }
+}
+
+function materializeRuntimeTemplates(
+  value: Record<string, unknown>,
+  constants: RemixConstantDefinitions,
+): Record<string, unknown> {
+  const result = { ...value };
+  for (const field of ["screen", "input", "mqtt", "nativeEvents"] as const) {
+    result[field] = materializeTemplateValue(value[field], constants);
+  }
+  return result;
+}
+
+function materializeTemplateValue(
+  value: unknown,
+  constants: RemixConstantDefinitions,
+): unknown {
+  if (typeof value === "string") {
+    return value.replace(CONSTANT_TEMPLATE_PATTERN, (_template, id: string, offset: number) => {
+      const definition = constants[id];
+      if (definition?.default !== undefined) {
+        return definition.default;
+      }
+
+      const prefix = value.slice(0, offset);
+      const looksLikeUrlPort = value.includes("://") && prefix.endsWith(":");
+      return looksLikeUrlPort ? "1" : "constant";
+    });
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => materializeTemplateValue(item, constants));
+  }
+  if (isRecord(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([name, item]) => [
+        name,
+        materializeTemplateValue(item, constants),
+      ]),
+    );
+  }
+  return value;
 }
 
 function validateNativeEventsConfig(value: unknown): void {
