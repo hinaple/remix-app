@@ -40,8 +40,11 @@ export default defineConfig({
         actions: [
           { type: "device.screen.wake" },
           {
-            type: "device.vibration.trigger",
-            args: { duration: 500 },
+            type: "device.vibration.play",
+            args: {
+              kind: "oneShot",
+              duration: 500,
+            },
           },
           {
             type: "host.panel.status.setText",
@@ -138,8 +141,31 @@ Activity가 inactive여도 즉시 실행할 수 있습니다.
 - `device.input.captureBack`
 - `device.input.captureKeys`
 - `device.audio.setVolume`
-- `device.vibration.trigger`
+- `device.vibration.play`
+- `device.vibration.stop`
 - `mqtt.publish`
+
+단발 진동은 `device.vibration.play`에 `kind: "oneShot"`을 사용합니다. pattern에 `repeat: true`를 지정하면 `device.vibration.stop`이 실행되거나 프로젝트가 정리될 때까지 반복할 수 있습니다.
+
+```ts
+{
+  type: "device.vibration.play",
+  args: {
+    kind: "pattern",
+    segments: [
+      { duration: 200, intensity: 0.8 },
+      { duration: 500, intensity: 0 },
+    ],
+    repeat: true,
+  },
+}
+```
+
+```ts
+{
+  type: "device.vibration.stop",
+}
+```
 
 ### WebView action
 

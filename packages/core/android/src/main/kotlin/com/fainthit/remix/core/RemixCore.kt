@@ -18,8 +18,6 @@ import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.PowerManager
 import android.os.SystemClock
-import android.os.VibrationEffect
-import android.os.Vibrator
 import android.provider.Settings
 import android.view.View
 import android.view.WindowManager
@@ -42,7 +40,6 @@ class RemixCore(private val activity: Activity) {
     private val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
     private val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-    private val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
     private val connectivityManager =
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     private var systemUiMode = SystemUiMode(immersive = false, hideSystemBars = false)
@@ -334,23 +331,6 @@ class RemixCore(private val activity: Activity) {
         val max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
         val target = (volume.coerceIn(0f, 1f) * max).toInt().coerceIn(0, max)
         audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, target, 0)
-    }
-
-    @Suppress("DEPRECATION")
-    fun vibrate(duration: Long) {
-        val clamped = duration.coerceAtLeast(1L)
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator.vibrate(
-                VibrationEffect.createOneShot(
-                    clamped,
-                    VibrationEffect.DEFAULT_AMPLITUDE,
-                ),
-            )
-            return
-        }
-
-        vibrator.vibrate(clamped)
     }
 
     private fun setSystemSetting(name: String, value: String) {

@@ -5,6 +5,7 @@ import type {
   RemixAppUnmount,
   RemixHostPanelContext,
   RemixKeyEvent,
+  RemixVibrationEffect,
 } from "@remixapp/sdk";
 import { normalizeRemixActionCall } from "@remixapp/sdk";
 import {
@@ -53,6 +54,7 @@ class RemixDevHost implements RemixDevHostController {
   private projectSubscriptions = new SubscriptionScope();
   private projectUnmount: RemixAppUnmount | undefined;
   private wakeLock: WakeLockSentinel | undefined;
+  private vibrationRepeatTimer: number | undefined;
 
   constructor(private readonly options: RemixDevHostOptions) {
     this.projectModule = options.projectModule;
@@ -131,6 +133,7 @@ class RemixDevHost implements RemixDevHostController {
   }
 
   private async stopProject(): Promise<void> {
+    this.stopVibration();
     if (!this.mounted) {
       return;
     }
@@ -239,8 +242,18 @@ class RemixDevHost implements RemixDevHostController {
           },
         },
         vibration: {
-          trigger: async (duration = 250) => {
-            await invoke("device.vibration.trigger", { duration });
+          play: async (effect) => {
+            await invoke("device.vibration.play", effect);
+          },
+          trigger: async (duration, intensity = 1) => {
+            await invoke("device.vibration.play", {
+              kind: "oneShot",
+              duration,
+              intensity,
+            });
+          },
+          stop: async () => {
+            await invoke("device.vibration.stop");
           },
         },
       },
@@ -363,10 +376,15 @@ class RemixDevHost implements RemixDevHostController {
         this.setStatus(`media volume ${volume.toFixed(2)}`);
         return;
       }
-      case "device.vibration.trigger": {
-        const { duration = 250 } = action.args as RemixActionArgsMap["device.vibration.trigger"];
-        navigator.vibrate?.(duration);
-        this.setStatus(`vibration ${duration}ms`);
+      case "device.vibration.play": {
+        const effect = action.args as RemixActionArgsMap["device.vibration.play"];
+        this.playVibration(effect);
+        this.setStatus(vibrationStatus(effect));
+        return;
+      }
+      case "device.vibration.stop": {
+        this.stopVibration();
+        this.setStatus("vibration stopped");
         return;
       }
       case "mqtt.publish":
@@ -442,10 +460,82 @@ class RemixDevHost implements RemixDevHostController {
     }
   }
 
+  private playVibration(effect: RemixVibrationEffect): void {
+    this.stopVibration();
+    const pattern = browserVibrationPattern(effect);
+    navigator.vibrate?.(pattern);
+
+    if (effect.kind !== "pattern" || !effect.repeat) {
+      return;
+    }
+
+    const duration = effect.segments.reduce(
+      (total, segment) => total + segment.duration,
+      0,
+    );
+    const replay = () => {
+      navigator.vibrate?.(pattern);
+      this.vibrationRepeatTimer = window.setTimeout(replay, duration);
+    };
+    this.vibrationRepeatTimer = window.setTimeout(replay, duration);
+  }
+
+  private stopVibration(): void {
+    if (this.vibrationRepeatTimer !== undefined) {
+      window.clearTimeout(this.vibrationRepeatTimer);
+      this.vibrationRepeatTimer = undefined;
+    }
+    navigator.vibrate?.(0);
+  }
+
   private setStatus(value: string): void {
     if (this.status) {
       this.status.textContent = value;
     }
+  }
+}
+
+function browserVibrationPattern(effect: RemixVibrationEffect): number | number[] {
+  if (effect.kind === "oneShot") {
+    return effect.duration;
+  }
+  if (effect.kind === "preset") {
+    switch (effect.preset) {
+      case "tick":
+        return 20;
+      case "click":
+        return 35;
+      case "heavyClick":
+        return 60;
+      case "doubleClick":
+        return [35, 60, 35];
+    }
+  }
+
+  const states: Array<{ on: boolean; duration: number }> = [];
+  for (const segment of effect.segments) {
+    const on = (segment.intensity ?? 1) > 0;
+    const previous = states.at(-1);
+    if (previous?.on === on) {
+      previous.duration += segment.duration;
+    } else {
+      states.push({ on, duration: segment.duration });
+    }
+  }
+
+  const pattern = states.map((state) => state.duration);
+  if (!states[0].on) pattern.unshift(0);
+  return pattern;
+}
+
+function vibrationStatus(effect: RemixVibrationEffect): string {
+  switch (effect.kind) {
+    case "oneShot":
+      return `vibration ${effect.duration}ms intensity ${(effect.intensity ?? 1).toFixed(2)}`;
+    case "pattern":
+      return `vibration pattern ${effect.segments.length} segment${effect.segments.length === 1 ? "" : "s"}${effect.repeat ? " repeating" : ""}`;
+    case "preset":
+      return `vibration preset ${effect.preset}`;
   }
 }
 

@@ -5,6 +5,7 @@ import android.os.Handler
 import android.os.Looper
 import com.fainthit.remix.core.RemixCore
 import com.fainthit.remix.core.mqtt.RemixMqttRuntime
+import com.fainthit.remix.core.vibration.RemixVibrationController
 import org.json.JSONObject
 
 private typealias NativeActionHandler = (JSONObject, NativeActionCompletion) -> Unit
@@ -12,6 +13,7 @@ typealias NativeActionCompletion = (Throwable?) -> Unit
 
 class RemixNativeActionRegistry(
     private val core: RemixCore,
+    private val vibration: RemixVibrationController,
     private val setCaptureBack: (Boolean) -> Unit,
     private val setCapturedKeys: (Set<String>) -> Unit,
     private val onScreenChanged: () -> Unit,
@@ -77,15 +79,11 @@ class RemixNativeActionRegistry(
         register("device.audio.setVolume") { args, done ->
             sync(done) { core.setMediaVolume(args.requiredUnitFloat("volume")) }
         }
-        register("device.vibration.trigger") { args, done ->
-            sync(done) {
-                val duration = if (args.has("duration") && !args.isNull("duration")) {
-                    args.requiredPositiveLong("duration")
-                } else {
-                    250L
-                }
-                core.vibrate(duration)
-            }
+        register("device.vibration.play") { args, done ->
+            sync(done) { vibration.play(args.toRemixVibrationEffect()) }
+        }
+        register("device.vibration.stop") { _, done ->
+            sync(done) { vibration.stop() }
         }
         register("mqtt.publish") { args, done ->
             val payload = args.optJSONObject("payload")
@@ -183,16 +181,6 @@ class RemixNativeActionRegistry(
             "Action argument $name must be a non-negative integer"
         }
         return result.toInt()
-    }
-
-    private fun JSONObject.requiredPositiveLong(name: String): Long {
-        val value = opt(name)
-        require(value is Number) { "Action argument $name must be an integer" }
-        val result = value.toLong()
-        require(value.toDouble() == result.toDouble() && result > 0) {
-            "Action argument $name must be a positive integer"
-        }
-        return result
     }
 
     private companion object {

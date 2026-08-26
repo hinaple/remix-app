@@ -123,10 +123,26 @@ await context.device.input.captureKeys(["VOLUME_UP", "VOLUME_DOWN"]);
 ```ts
 const volume = await context.device.audio.getVolume();
 await context.device.audio.setVolume(Math.min(1, volume + 0.1));
+
 await context.device.vibration.trigger(180);
+await context.device.vibration.trigger(180, 0.5);
+
+await context.device.vibration.play({
+  kind: "pattern",
+  segments: [
+    { duration: 100, intensity: 1 },
+    { duration: 50, intensity: 0 },
+    { duration: 100, intensity: 0.5 },
+  ],
+  repeat: true,
+});
+
+await context.device.vibration.stop();
 ```
 
-미디어 볼륨 값은 `0`부터 `1` 사이입니다. 진동 duration의 단위는 ms이며 생략할 수 있습니다.
+미디어 볼륨과 진동 intensity는 `0`부터 `1` 사이입니다. `oneShot` intensity는 0보다 커야 하며 pattern에서는 `0`이 정지 구간입니다. intensity는 생략하면 `1`입니다. 진동 duration의 단위는 ms이며 1 이상의 정수여야 합니다.
+
+`trigger(duration, intensity?)`는 단발 진동을 재생합니다. `play()`는 `oneShot`, `pattern`, `preset` 효과를 재생하며 `stop()`은 현재 진동을 중단합니다. 자세한 사용법은 [기기 제어](../guides/device-control.md)를 참고하세요.
 
 ## events
 

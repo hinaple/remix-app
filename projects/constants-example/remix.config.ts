@@ -47,7 +47,10 @@ export default defineConfig({
           {
             type: "device.screen.wake",
           },
-          { type: "device.vibration.trigger", args: { duration: 1000 } },
+          {
+            type: "device.vibration.play",
+            args: { kind: "oneShot", duration: 1000 },
+          },
         ],
       },
     ],

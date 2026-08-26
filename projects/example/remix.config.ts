@@ -34,8 +34,8 @@ export default defineConfig({
         actions: [
           { type: "device.screen.wake" },
           {
-            type: "device.vibration.trigger",
-            args: { duration: 500 },
+            type: "device.vibration.play",
+            args: { kind: "oneShot", duration: 500 },
           },
           {
             type: "host.panel.status.setText",

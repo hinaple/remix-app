@@ -1,4 +1,5 @@
 import type { RemixScreenOrientation } from "./config.js";
+import type { RemixVibrationEffect, RemixVibrationPreset } from "./device.js";
 import type { RemixHostPanelButton, RemixHostPanelStatus } from "./host.js";
 import type { RemixKey } from "./keys.js";
 import type { RemixMqttQos } from "./mqtt.js";
@@ -13,7 +14,8 @@ export interface RemixActionArgsMap {
   "device.input.captureBack": { enabled: boolean };
   "device.input.captureKeys": { keys: RemixKey[] };
   "device.audio.setVolume": { volume: number };
-  "device.vibration.trigger": { duration?: number };
+  "device.vibration.play": RemixVibrationEffect;
+  "device.vibration.stop": RemixEmptyActionArgs;
   "mqtt.publish": {
     connection: string;
     topic: string;
@@ -90,7 +92,8 @@ export const remixActionDefinitions = {
   "device.input.captureBack": native("activity", booleanArg("enabled")),
   "device.input.captureKeys": native("activity", captureKeysArgs),
   "device.audio.setVolume": native("application", unitNumberArg("volume")),
-  "device.vibration.trigger": native("application", vibrationArgs),
+  "device.vibration.play": native("application", vibrationPlayArgs),
+  "device.vibration.stop": native("application", empty),
   "mqtt.publish": native("application", mqttPublishArgs, "unsupported"),
   "project.reset": web(empty),
   "host.panel.buttons.set": {
@@ -230,13 +233,95 @@ function captureKeysArgs(value: unknown): { keys: RemixKey[] } {
   return { keys: [...new Set(keys)] as RemixKey[] };
 }
 
-function vibrationArgs(value: unknown): { duration?: number } {
-  const args = record(value, "action.args", false);
-  if (args.duration === undefined) return {};
-  if (!Number.isInteger(args.duration) || (args.duration as number) < 1) {
-    throw new Error("action.args.duration must be a positive integer");
+function vibrationPlayArgs(value: unknown): RemixVibrationEffect {
+  const args = record(value, "action.args", true);
+  const kind = stringValue(args.kind, "action.args.kind");
+
+  if (kind === "oneShot") {
+    return {
+      kind,
+      duration: positiveInteger(args.duration, "action.args.duration"),
+      intensity: vibrationIntensity(
+        args.intensity,
+        "action.args.intensity",
+        false,
+      ),
+    };
   }
-  return { duration: args.duration as number };
+
+  if (kind === "pattern") {
+    if (!Array.isArray(args.segments) || args.segments.length === 0) {
+      throw new Error("action.args.segments must be a non-empty array");
+    }
+    const segments = args.segments.map((value, index) => {
+      const segment = record(value, `action.args.segments[${index}]`, true);
+      return {
+        duration: positiveInteger(
+          segment.duration,
+          `action.args.segments[${index}].duration`,
+        ),
+        intensity: vibrationIntensity(
+          segment.intensity,
+          `action.args.segments[${index}].intensity`,
+          true,
+        ),
+      };
+    });
+    if (!segments.some((segment) => segment.intensity > 0)) {
+      throw new Error("action.args.segments must contain a vibration segment");
+    }
+    if (args.repeat !== undefined && typeof args.repeat !== "boolean") {
+      throw new Error("action.args.repeat must be a boolean");
+    }
+    return {
+      kind,
+      segments,
+      repeat: args.repeat ?? false,
+    };
+  }
+
+  if (kind === "preset") {
+    const preset = stringValue(args.preset, "action.args.preset");
+    const allowed: RemixVibrationPreset[] = [
+      "tick",
+      "click",
+      "heavyClick",
+      "doubleClick",
+    ];
+    if (!allowed.includes(preset as RemixVibrationPreset)) {
+      throw new Error("action.args.preset is invalid");
+    }
+    return { kind, preset: preset as RemixVibrationPreset };
+  }
+
+  throw new Error("action.args.kind is invalid");
+}
+
+function vibrationIntensity(
+  value: unknown,
+  field: string,
+  allowZero: boolean,
+): number {
+  if (value === undefined) return 1;
+  if (
+    typeof value !== "number" ||
+    !Number.isFinite(value) ||
+    value > 1 ||
+    value < 0 ||
+    (!allowZero && value === 0)
+  ) {
+    throw new Error(
+      `${field} must be ${allowZero ? "from 0 to 1" : "greater than 0 and at most 1"}`,
+    );
+  }
+  return value;
+}
+
+function positiveInteger(value: unknown, field: string): number {
+  if (!Number.isSafeInteger(value) || (value as number) < 1) {
+    throw new Error(`${field} must be a positive integer`);
+  }
+  return value as number;
 }
 
 function mqttPublishArgs(value: unknown): RemixActionArgsMap["mqtt.publish"] {

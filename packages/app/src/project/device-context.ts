@@ -38,8 +38,14 @@ export function createDeviceContext(
         actions.invoke("device.audio.setVolume", { volume }),
     },
     vibration: {
-      trigger: (duration) =>
-        actions.invoke("device.vibration.trigger", { duration }),
+      play: (effect) => actions.invoke("device.vibration.play", effect),
+      trigger: (duration, intensity = 1) =>
+        actions.invoke("device.vibration.play", {
+          kind: "oneShot",
+          duration,
+          intensity,
+        }),
+      stop: () => actions.invoke("device.vibration.stop"),
     },
   };
 }

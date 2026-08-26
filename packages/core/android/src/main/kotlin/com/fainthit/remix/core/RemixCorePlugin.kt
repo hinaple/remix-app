@@ -21,6 +21,7 @@ import com.fainthit.remix.core.nativeevents.RemixNativeEventConfigLoader
 import com.fainthit.remix.core.nativeevents.RemixNativeEventEngine
 import com.fainthit.remix.core.project.RemixProjectConfigRepository
 import com.fainthit.remix.core.project.RemixProjectConfiguration
+import com.fainthit.remix.core.vibration.RemixVibrationController
 import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
@@ -33,6 +34,7 @@ import androidx.core.view.ViewCompat
 @CapacitorPlugin(name = "RemixCore")
 class RemixCorePlugin : Plugin() {
     private lateinit var implementation: RemixCore
+    private lateinit var vibration: RemixVibrationController
     private var batteryReceiver: BroadcastReceiver? = null
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
     private var screenReceiver: BroadcastReceiver? = null
@@ -63,8 +65,10 @@ class RemixCorePlugin : Plugin() {
 
     override fun load() {
         implementation = RemixCore(activity)
+        vibration = RemixVibrationController(context)
         nativeActions = RemixNativeActionRegistry(
             core = implementation,
+            vibration = vibration,
             setCaptureBack = { captureBack = it },
             setCapturedKeys = { capturedKeys = it },
             onScreenChanged = {
@@ -463,6 +467,7 @@ class RemixCorePlugin : Plugin() {
     }
 
     override fun handleOnDestroy() {
+        vibration.close()
         nativeEventEngine.close()
         stopBatteryStatusUpdatesSilently()
         stopNetworkStatusUpdatesSilently()

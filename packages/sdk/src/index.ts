@@ -57,6 +57,9 @@ export type {
   RemixScreenContext,
   RemixScreenStatus,
   RemixVibrationContext,
+  RemixVibrationEffect,
+  RemixVibrationPreset,
+  RemixVibrationSegment,
 } from "./device";
 
 export type {
