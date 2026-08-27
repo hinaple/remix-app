@@ -1,6 +1,6 @@
 {
   "name": "remixapp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
@@ -10,6 +10,9 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "dev:app": "pnpm --filter @remixapp/app dev",
     "dev:example": "pnpm --filter remixapp-example dev",
+    "dev:cli": "pnpm --filter @remixapp/cli exec tsup --watch",
+    "dev:sdk": "pnpm --filter @remixapp/sdk exec tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "dev:linked": "concurrently --kill-others-on-fail --names CLI,SDK \"pnpm run dev:cli\" \"pnpm run dev:sdk\"",
     "build:app": "pnpm --filter @remixapp/app build",
     "build:cli": "pnpm --filter @remixapp/cli build",
     "build:create": "pnpm --filter @remixapp/create build",
@@ -27,15 +30,13 @@
     "android:update": "pnpm run build:app & pnpm cap:sync & pnpm run android:build & pnpm run android:install",
     "changeset": "changeset",
     "changeset:status": "changeset status",
-    "release:sync": "node scripts/release-versions.mjs sync",
-    "release:pack": "node scripts/release-pack.mjs",
-    "release:manifests": "node scripts/verify-publish-manifests.mjs",
-    "release:check": "node scripts/release-check.mjs",
-    "release:version": "changeset version && node scripts/release-versions.mjs sync",
-    "release:publish": "pnpm release:check && changeset publish"
+    "release:check": "node scripts/release/check.mjs",
+    "release:start": "node scripts/release/start.mjs",
+    "release:sync": "node scripts/release/versions.mjs sync"
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.1",
+    "concurrently": "^10.0.5",
     "typescript": "^5.8.3"
   },
   "pnpm": {

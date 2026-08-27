@@ -95,8 +95,6 @@ class CssKeyboardLayout implements HostKeyboardLayout {
     this.hostElement.style.transform = "";
 
     this.hostElement.classList.remove("inspect");
-
-    console.log("reset");
   }
 
   private getPanOffset(keyboardHeight: number): number {

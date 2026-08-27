@@ -50,13 +50,17 @@ class RemixNativeEventEngine(
 
     fun onEvent(event: String, payload: JSONObject) {
         synchronized(this) {
-            if (!projectMounted || activityResumed) return
+            if (!projectMounted) return
             val now = SystemClock.elapsedRealtime()
             sequences.removeAll {
                 it.sessionId != sessionId || it.expiresAt <= now
             }
             config.rules.asSequence()
-                .filter { it.event == event && matches(payload, it.conditions) }
+                .filter {
+                    it.event == event &&
+                        matchesActivityState(it.activityState) &&
+                        matches(payload, it.conditions)
+                }
                 .forEach { rule ->
                     sequences += ActionSequence(
                         sessionId = sessionId,
@@ -66,6 +70,13 @@ class RemixNativeEventEngine(
                 }
         }
         drain()
+    }
+
+    private fun matchesActivityState(activityState: String): Boolean = when (activityState) {
+        "inactive" -> !activityResumed
+        "resumed" -> activityResumed
+        "always" -> true
+        else -> false
     }
 
     fun completeWebAction(requestId: String, error: String?) {

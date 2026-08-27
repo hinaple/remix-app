@@ -8,7 +8,8 @@
 import { defineConfig } from "@remixapp/sdk/config";
 
 export default defineConfig({
-  name: "airport-room",
+  name: "remixapp-test",
+  projectId: "remixapp-test",
   version: "0.1.0",
   entry: "src/index.ts",
   styles: ["src/style.css"],
@@ -36,34 +37,38 @@ export default defineConfig({
 
 ## 최상위 필드
 
-| 필드 | 타입 | 필수 | 설명 |
-| --- | --- | --- | --- |
-| `name` | `string` | 예 | manifest의 프로젝트 이름과 출력 파일명에 사용합니다. |
-| `version` | `string` | 예 | semantic version이며 manifest와 출력 파일명에 사용합니다. |
-| `entry` | `string` | 예 | 프로젝트 루트 기준 entry module 경로입니다. |
-| `styles` | `string[]` | 아니요 | 프로젝트 루트 기준 CSS 경로입니다. 작성 순서를 보존합니다. |
-| `kiosk` | `boolean` | 아니요 | 시작 시 Host에 kiosk 동작을 요청합니다. |
-| `screen` | `object` | 아니요 | 시작 시 적용할 화면 및 soft keyboard 정책입니다. |
-| `input` | `object` | 아니요 | hardware key와 Android back key 정책입니다. |
-| `mqtt` | `object` | 아니요 | native runtime이 소유할 고정 MQTT 연결과 구독입니다. |
-| `nativeEvents` | `object` | 아니요 | Activity가 inactive인 동안에도 평가할 event-action 규칙입니다. |
-| `vite` | Vite config | 아니요 | 프로젝트별 Vite 설정입니다. |
+| 필드           | 타입                     | 필수   | 설명                                                                                                     |
+| -------------- | ------------------------ | ------ | -------------------------------------------------------------------------------------------------------- |
+| `name`         | `string`                 | 예     | manifest의 프로젝트 이름과 출력 파일명에 사용합니다.                                                     |
+| `projectId`    | `string`                 | 아니요 | 기기별 프로젝트 데이터의 안정적인 식별자입니다. 생략하면 `name`을 사용하고 빌드 시 warning을 출력합니다. |
+| `version`      | `string`                 | 예     | semantic version이며 manifest와 출력 파일명에 사용합니다.                                                |
+| `entry`        | `string`                 | 예     | 프로젝트 루트 기준 entry module 경로입니다.                                                              |
+| `styles`       | `string[]`               | 아니요 | 프로젝트 루트 기준 CSS 경로입니다. 작성 순서를 보존합니다.                                               |
+| `kiosk`        | `boolean`                | 아니요 | 시작 시 Host에 kiosk 동작을 요청합니다.                                                                  |
+| `screen`       | `object`                 | 아니요 | 시작 시 적용할 화면 및 soft keyboard 정책입니다.                                                         |
+| `input`        | `object`                 | 아니요 | hardware key와 Android back key 정책입니다.                                                              |
+| `mqtt`         | `object`                 | 아니요 | native runtime이 소유할 고정 MQTT 연결과 구독입니다.                                                     |
+| `nativeEvents` | `object`                 | 아니요 | Activity 상태에 따라 평가할 event-action 규칙입니다.                                                     |
+| `constants`    | `Record<string, object>` | 아니요 | Host가 기기별로 저장하는 문자열 설정의 정의입니다.                                                       |
+| `vite`         | Vite config              | 아니요 | 프로젝트별 Vite 설정입니다.                                                                              |
 
 `entry`와 `styles`는 절대 경로가 아닌 프로젝트 상대 경로여야 합니다. `styles`에 명시한 파일이 없으면 빌드가 실패합니다.
 
 현재 Android Host는 `kiosk`를 생략하면 활성화 요청으로, `input.captureBack`을 생략하면 back capture 활성화 요청으로 처리합니다. 의도를 분명히 하고 Host version 차이의 영향을 줄이려면 project config에 두 값을 명시하는 것을 권장합니다.
 
+`projectId`는 표시 이름이나 package version과 독립적인 저장 식별자입니다. 프로젝트 업데이트 후에도 기기별 설정을 유지하려면 처음부터 명시하고 이후 버전에서 변경하지 않는 것을 권장합니다. 자세한 저장 규칙은 [Constants](constants.md)를 참고하세요.
+
 ## screen
 
-| 필드 | 타입 | 설명 |
-| --- | --- | --- |
-| `keepOn` | `boolean` | 프로젝트 실행 중 화면을 켜진 상태로 유지하도록 요청합니다. |
-| `autoBrightness` | `boolean` | Android 자동 밝기를 사용할지 지정합니다. 지정하지 않으면 Host는 결정적인 밝기 동작을 위해 기본적으로 비활성화합니다. |
-| `immersive` | `boolean` | immersive mode를 요청합니다. |
-| `hideSystemBars` | `boolean` | Android system bar 숨김을 요청합니다. |
-| `orientation` | `RemixScreenOrientation` | 프로젝트 실행 중 화면 방향 정책입니다. |
-| `timeout` | `number` | 화면 꺼짐 시간 요청값이며 단위는 ms입니다. 기기 정책에 따라 Host가 보정하거나 무시할 수 있습니다. |
-| `keyboard` | `object` | soft keyboard의 layout 및 초기 표시 상태입니다. |
+| 필드             | 타입                     | 설명                                                                                                                 |
+| ---------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `keepOn`         | `boolean`                | 프로젝트 실행 중 화면을 켜진 상태로 유지하도록 요청합니다.                                                           |
+| `autoBrightness` | `boolean`                | Android 자동 밝기를 사용할지 지정합니다. 지정하지 않으면 Host는 결정적인 밝기 동작을 위해 기본적으로 비활성화합니다. |
+| `immersive`      | `boolean`                | immersive mode를 요청합니다.                                                                                         |
+| `hideSystemBars` | `boolean`                | Android system bar 숨김을 요청합니다.                                                                                |
+| `orientation`    | `RemixScreenOrientation` | 프로젝트 실행 중 화면 방향 정책입니다.                                                                               |
+| `timeout`        | `number`                 | 화면 꺼짐 시간 요청값이며 단위는 ms입니다. 기기 정책에 따라 Host가 보정하거나 무시할 수 있습니다.                    |
+| `keyboard`       | `object`                 | soft keyboard의 layout 및 초기 표시 상태입니다.                                                                      |
 
 지원하는 `orientation` 값은 다음과 같습니다.
 
@@ -74,11 +79,11 @@ sensor | fullSensor | locked | unspecified
 
 ### screen.keyboard
 
-| 필드 | 값 | 설명 |
-| --- | --- | --- |
-| `adjust` | `resize`, `pan`, `nothing` | keyboard가 보일 때 프로젝트 UI를 어떻게 조정할지 지정합니다. |
-| `nativeAdjust` | `boolean` | `true`이면 Android native soft-input adjust를 사용합니다. 기본 모드에서는 Host JavaScript layout이 `adjust`를 처리합니다. |
-| `state` | `unspecified`, `hidden`, `alwaysHidden`, `visible`, `alwaysVisible` | Android에 요청할 keyboard 표시 상태입니다. |
+| 필드           | 값                                                                  | 설명                                                                                                                      |
+| -------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `adjust`       | `resize`, `pan`, `nothing`                                          | keyboard가 보일 때 프로젝트 UI를 어떻게 조정할지 지정합니다.                                                              |
+| `nativeAdjust` | `boolean`                                                           | `true`이면 Android native soft-input adjust를 사용합니다. 기본 모드에서는 Host JavaScript layout이 `adjust`를 처리합니다. |
+| `state`        | `unspecified`, `hidden`, `alwaysHidden`, `visible`, `alwaysVisible` | Android에 요청할 keyboard 표시 상태입니다.                                                                                |
 
 ## input
 
@@ -90,6 +95,22 @@ input: {
 ```
 
 `capturedKeys`에 포함된 hardware key는 `context.events.on("device:key", ...)`으로 전달됩니다. `captureBack`은 Android back key를 프로젝트가 처리하도록 Host에 요청합니다. 실행 중에는 `context.device.input.captureKeys()`와 `captureBack()`으로 값을 바꿀 수도 있습니다.
+
+## constants
+
+Constants는 프로젝트가 문자열 설정 이름을 예약하고 Android Host에서 기기별 override를 저장하는 기능입니다.
+
+```ts
+constants: {
+  deviceId: { required: true },
+  brokerHost: { default: "192.168.0.10" },
+  roomLabel: {},
+},
+```
+
+`default`와 `required`는 모두 선택사항이며 `required`의 기본값은 `false`입니다. `required: true`여도 `default`가 있으면 기본값으로 실행할 수 있습니다. `default`가 없고 required인 항목에 기기 override도 없을 때만 Host가 프로젝트 시작을 보류하고 설정 UI를 표시합니다.
+
+`screen`, `input`, `mqtt`, `nativeEvents` 내부 문자열에서는 `{{Constants.deviceId}}` 형식으로 최종 값을 참조할 수 있습니다. 프로젝트 코드에서는 `context.constants.deviceId`로 읽습니다. 전체 ID 규칙, 치환 범위, 저장 수명과 dev 환경 제한은 [Constants 레퍼런스](constants.md)를 참고하세요.
 
 ## mqtt
 
@@ -130,13 +151,14 @@ await context.mqtt.publish("primary", "devices/kiosk-1/state", "ready", {
 
 ## nativeEvents
 
-`nativeEvents`는 프로젝트 Activity가 inactive인 동안 native event를 조건과 비교하여 action을 순서대로 실행합니다.
+`nativeEvents`는 native event를 조건과 비교하여 action을 순서대로 실행합니다. 각 rule의 `activityState`로 실행할 Activity 상태를 제한할 수 있으며 기본값은 `always`입니다.
 
 ```ts
 nativeEvents: {
   rules: [
     {
       on: "device:status:battery",
+      activityState: "inactive",
       when: {
         level: { lte: 0.15 },
         charging: false,
@@ -144,8 +166,11 @@ nativeEvents: {
       actions: [
         { type: "device.screen.wake" },
         {
-          type: "device.vibration.trigger",
-          args: { duration: 500 },
+          type: "device.vibration.play",
+          args: {
+            kind: "oneShot",
+            duration: 500,
+          },
         },
       ],
       expiresIn: 10000,
@@ -154,7 +179,7 @@ nativeEvents: {
 }
 ```
 
-`when`의 key는 event payload의 dot path입니다. 값 직접 비교 외에 `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `contains`, `exists` matcher를 사용할 수 있습니다. `actions`는 비어 있을 수 없으며 `expiresIn`을 지정하면 1 이상의 정수 ms여야 합니다.
+`activityState`는 `inactive`, `resumed`, `always` 중 하나이며 생략하면 `always`입니다. `when`의 key는 event payload의 dot path입니다. 값 직접 비교 외에 `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `contains`, `exists` matcher를 사용할 수 있습니다. `actions`는 비어 있을 수 없으며 `expiresIn`을 지정하면 1 이상의 정수 ms여야 합니다.
 
 `host.panel.buttons.set`처럼 callback을 포함하는 context 전용 기능은 `nativeEvents` action으로 사용할 수 없습니다.
 
@@ -179,6 +204,7 @@ CLI는 사용자 Vite 설정을 병합하지만 `.remixprj` 계약을 유지하�
 - 진단용 `builtWith.cli`, `builtWith.sdk`
 - `entry: "src/index.js"`
 - `styles: ["src/style.css"]`
+- `constants` 정의와 지원되는 runtime config의 Constant template
 - MQTT 및 native event 기본값
 
 프로젝트에서 `project.json`을 직접 작성하거나 자동 생성 필드를 source config에 추가하지 마세요.
@@ -188,6 +214,7 @@ CLI는 사용자 Vite 설정을 병합하지만 `.remixprj` 계약을 유지하�
 - [빠른 시작](../getting-started/quick-start.md)
 - [아키텍처](../concepts/architecture.md)
 - [RemixAppContext](context.md)
+- [Constants](constants.md)
 - [MQTT](mqtt.md)
 - [nativeEvents](native-events.md)
 - [프로젝트 패키지](../concepts/project-package.md)

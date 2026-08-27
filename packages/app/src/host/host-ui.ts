@@ -6,6 +6,7 @@ const HostUiDataMap = {
   hostStatus: "host-status",
   projectContainer: "project-container",
   projectImportButton: "import-project",
+  resetButton: "reset",
   hostExitButton: "exit-app",
   projectPanelStatus: "project-panel-status",
   projectPanelButtons: "project-panel-buttons",
@@ -14,11 +15,19 @@ const HostUiDataMap = {
   hostDeviceInfo: "device-info",
   hostPolicyInfo: "policy-info",
   hostErrorInfo: "error-info",
+  projectConstantsSection: "project-constants",
+  projectConstantsForm: "project-constants-form",
+  projectConstantsFields: "project-constants-fields",
+  projectConstantsResetButton: "project-constants-reset",
+  projectConstantsSaveButton: "project-constants-save",
+  projectConstantsError: "project-constants-error",
 } as const;
 
 type HostUiNodes = {
   [k in keyof typeof HostUiDataMap]: k extends `${string}Button`
     ? HTMLButtonElement
+    : k extends `${string}Form`
+      ? HTMLFormElement
     : HTMLElement;
 };
 

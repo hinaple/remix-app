@@ -6,9 +6,9 @@ import { join } from "node:path";
 import {
   listAndroidDevices,
   resolveAdb,
-  run,
   selectAndroidDevice,
 } from "../packages/cli/android-tools/index.mjs";
+import { installAndLaunchAndroidHost } from "./android-host.mjs";
 
 const root = process.cwd();
 const apkPath = join(
@@ -48,9 +48,7 @@ try {
     : [await selectAndroidDevice(devices)];
   for (const device of targets) {
     console.log(`Installing ${apkPath} to ${device.serial}`);
-    run(adb, ["-s", device.serial, "install", "-r", apkPath], {
-      stdio: "inherit",
-    });
+    installAndLaunchAndroidHost(adb, device.serial, apkPath);
   }
 } catch (error) {
   fail(error instanceof Error ? error.message : String(error));

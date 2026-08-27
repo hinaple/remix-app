@@ -1,8 +1,9 @@
 <main class="host-shell">
-  <section data-host-admin hidden>
+  <div data-host-admin hidden>
     <h1 data-project-title>REMIX APP</h1>
     <p data-host-status>Loading project...</p>
     <div class="host-actions buttons">
+      <button type="button" data-reset>Reset</button>
       <button type="button" data-import-project>Import project</button>
       <button type="button" data-exit-app>Exit app</button>
     </div>
@@ -12,6 +13,18 @@
     </section>
     <section>
       <div class="buttons" data-project-panel-buttons></div>
+    </section>
+    <hr />
+    <section class="project-constants" data-project-constants hidden>
+      <h2>Constants</h2>
+      <form data-project-constants-form>
+        <div class="project-constants-fields" data-project-constants-fields></div>
+        <div class="buttons">
+          <button type="button" data-project-constants-reset>Use defaults</button>
+          <button type="submit" data-project-constants-save>Save and restart</button>
+        </div>
+        <p class="project-constants-error" data-project-constants-error></p>
+      </form>
     </section>
     <hr />
     <details>
@@ -30,6 +43,6 @@
         <div data-error-info>None</div>
       </div>
     </details>
-  </section>
-  <section data-project-container></section>
+  </div>
+  <div data-project-container></div>
 </main>

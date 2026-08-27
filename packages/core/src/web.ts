@@ -13,6 +13,8 @@ import type {
   RemixCoreMqttStatuses,
   RemixNetworkStatus,
   RemixPickedProjectPackage,
+  RemixProjectConfiguration,
+  RemixProjectConfigurationReady,
   RemixKioskResult,
   RemixScreenStatus,
 } from "./definitions.js";
@@ -111,6 +113,14 @@ export class RemixCoreWeb extends WebPlugin implements RemixCorePlugin {
 
   async getActiveProject(): Promise<RemixInstalledProject> {
     return { installed: false };
+  }
+
+  async getActiveProjectConfiguration(): Promise<RemixProjectConfiguration> {
+    throw new Error("Active project configuration is only available on Android.");
+  }
+
+  async setActiveProjectConstants(): Promise<RemixProjectConfigurationReady> {
+    throw new Error("Project constants are only available on Android.");
   }
 
   async consumeLaunchProjectInstall(): Promise<RemixLaunchProjectInstall> {

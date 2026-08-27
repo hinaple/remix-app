@@ -125,6 +125,7 @@ context가 소유한 event 구독은 프로젝트가 unmount될 때 자동으로
 - [개발자 문서](docs/README.md)
 - [아키텍처](docs/concepts/architecture.md)
 - [프로젝트 설정](docs/reference/configuration.md)
+- [Constants](docs/reference/constants.md)
 - [CLI 레퍼런스](docs/reference/cli.md)
 - [이벤트와 상태](docs/reference/events.md)
 - [MQTT](docs/reference/mqtt.md)

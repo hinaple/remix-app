@@ -1,8 +1,12 @@
 :root {
+  width: 100%;
+  height: 100%;
   color: #fdfeff;
   background: #121314;
   font-family:
     Inter, ui-sans-serif, system-ui, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  overflow: hidden;
+  margin: 0;
 }
 
 * {
@@ -10,22 +14,32 @@
 }
 
 body {
+  width: 100%;
+  height: 100%;
   margin: 0;
+  overflow: hidden;
 }
 
 .host-shell {
-  min-height: 100vh;
+  min-height: 100%;
 
-  & > section {
-    min-height: 100vh;
+  & > div {
+    min-height: 100%;
+    position: absolute;
+
     &[hidden] {
       display: none;
     }
   }
 }
 
+#app {
+  width: 100%;
+  height: 100%;
+}
+
 [data-project-container] {
   overflow-y: auto;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
 }

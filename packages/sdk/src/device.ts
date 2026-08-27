@@ -225,9 +225,49 @@ export interface RemixAudioContext {
 /**
  * Vibration controls exposed to project code.
  */
+export interface RemixVibrationSegment {
+  /** Segment duration in milliseconds. */
+  duration: number;
+
+  /** Requested intensity from 0 to 1. Defaults to 1. */
+  intensity?: number;
+}
+
+export type RemixVibrationPreset =
+  | "tick"
+  | "click"
+  | "heavyClick"
+  | "doubleClick";
+
+export type RemixVibrationEffect =
+  | {
+      kind: "oneShot";
+      duration: number;
+      intensity?: number;
+    }
+  | {
+      kind: "pattern";
+      segments: RemixVibrationSegment[];
+      repeat?: boolean;
+    }
+  | {
+      kind: "preset";
+      preset: RemixVibrationPreset;
+    };
+
 export interface RemixVibrationContext {
   /**
-   * Triggers a vibration for the given duration in milliseconds.
+   * Plays a vibration effect.
    */
-  trigger(duration?: number): Promise<void>;
+  play(effect: RemixVibrationEffect): Promise<void>;
+
+  /**
+   * Plays a one-shot vibration for the given duration and intensity.
+   */
+  trigger(duration: number, intensity?: number): Promise<void>;
+
+  /**
+   * Stops the current vibration effect.
+   */
+  stop(): Promise<void>;
 }

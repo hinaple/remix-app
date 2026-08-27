@@ -1,0 +1,18 @@
+{
+  "name": "remixapp-constants-example",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "remix-cli build",
+    "build:unpack": "remix-cli build --unpack",
+    "deploy": "remix-cli deploy",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@remixapp/cli": "workspace:*",
+    "@remixapp/sdk": "workspace:*",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.0"
+  }
+}

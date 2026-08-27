@@ -20,9 +20,10 @@ remixApp 프로젝트를 처음 만든다면 [빠른 시작](getting-started/qui
 - [프로젝트 설정](reference/configuration.md): `remix.config.ts` 필드와 적용 시점
 - [CLI](reference/cli.md): `dev`, `build`, `deploy` 명령과 옵션
 - [RemixAppContext](reference/context.md): 프로젝트에서 사용할 수 있는 Host API
+- [Constants](reference/constants.md): 기기별 문자열 설정, required 시작 조건과 config template 치환
 - [이벤트와 상태](reference/events.md): snapshot, event payload와 구독 수명
 - [MQTT](reference/mqtt.md): native 연결 설정, 상태, publish와 message
-- [nativeEvents](reference/native-events.md): Activity inactive 상태의 조건부 action
+- [nativeEvents](reference/native-events.md): Activity 상태별 조건부 action
 
 ### 기능별 가이드
 

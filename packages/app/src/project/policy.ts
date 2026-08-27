@@ -55,6 +55,7 @@ export async function applyProjectPolicy(
 export async function clearProjectPolicy(
   actions: ProjectActionClient,
 ): Promise<void> {
+  await actions.invoke("device.vibration.stop");
   await RemixCore.setKioskMode({ enabled: false });
   await actions.invoke("device.input.captureBack", { enabled: false });
   await actions.invoke("device.input.captureKeys", { keys: [] });

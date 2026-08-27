@@ -62,10 +62,10 @@ src/
 
 ## 필수 파일
 
-| 경로 | 역할 |
-| --- | --- |
-| `project.json` | Host가 읽는 정규화된 runtime manifest |
-| `src/index.js` | Host가 dynamic import하는 ES module entry |
+| 경로            | 역할                                          |
+| --------------- | --------------------------------------------- |
+| `project.json`  | Host가 읽는 정규화된 runtime manifest         |
+| `src/index.js`  | Host가 dynamic import하는 ES module entry     |
 | `src/style.css` | project mount 전에 Host가 로드하는 stylesheet |
 
 source project에 CSS가 없더라도 CLI는 빈 `src/style.css`를 생성합니다. Host는 임의의 source entry나 style 이름을 찾지 않고 위 고정 경로만 사용합니다.
@@ -80,7 +80,8 @@ source project에 CSS가 없더라도 CLI는 빈 `src/style.css`를 생성합니
     "cli": "0.2.0",
     "sdk": "0.2.0"
   },
-  "name": "airport-room",
+  "name": "remixapp-test",
+  "projectId": "remixapp-test",
   "version": "0.1.0",
   "entry": "src/index.js",
   "styles": ["src/style.css"],
@@ -91,11 +92,23 @@ source project에 CSS가 없더라도 CLI는 빈 `src/style.css`를 생성합니
   },
   "input": {
     "captureBack": true
+  },
+  "constants": {
+    "deviceId": {
+      "required": true
+    },
+    "brokerHost": {
+      "default": "192.168.0.10"
+    }
   }
 }
 ```
 
 CLI는 source config에서 Host에 필요한 값만 옮깁니다. source entry path, source style path와 Vite config는 runtime manifest에 포함하지 않습니다.
+
+`projectId`는 Host가 Constants처럼 프로젝트별 기기 데이터를 저장할 때 사용하는 안정적인 식별자입니다. 이전 manifest처럼 이 필드가 없으면 Host는 `name`을 사용합니다.
+
+`constants`에는 정의와 default가 들어가며 기기별 override는 package에 기록되지 않습니다. Host는 active project를 시작할 때 저장된 override를 적용하고 `screen`, `input`, `mqtt`, `nativeEvents` 문자열의 `{{Constants.id}}` template을 치환합니다. 자세한 내용은 [Constants](../reference/constants.md)를 참고하세요.
 
 ## 호환성 버전
 
@@ -107,9 +120,7 @@ Host가 지원하는 값보다 크면 package가 더 새로운 형식이므로 �
 
 ### runtimeApiVersion
 
-`RemixAppContext`, event와 action 계약의 버전입니다. 현재 SDK/Host runtime API는 `2`이며 현재 Host가 요구하는 최소 버전도 `2`입니다.
-
-초기 compatibility field가 없던 package는 version `1`로 해석됩니다. 따라서 runtime API 2를 요구하는 현재 Host에서는 이전 package를 새 CLI로 다시 빌드해야 합니다.
+`RemixAppContext`, event와 action 계약의 버전입니다. 현재 SDK/Host runtime API는 `4`이며 현재 Host가 요구하는 최소 버전은 `2`입니다.
 
 ### builtWith
 
@@ -202,5 +213,6 @@ filesystem active slot 교체 중 실패하면 가능한 경우 이전 directory
 - [아키텍처](architecture.md)
 - [lifecycle](lifecycle.md)
 - [프로젝트 설정](../reference/configuration.md)
+- [Constants](../reference/constants.md)
 - [resources](../guides/resources.md)
 - [CLI](../reference/cli.md)

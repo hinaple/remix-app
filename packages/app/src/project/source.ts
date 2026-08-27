@@ -23,15 +23,6 @@ export async function resolveProjectSource(): Promise<
     };
   }
 
-  const projectPath = searchParams.get("project");
-
-  if (projectPath) {
-    return {
-      label: "query project",
-      url: new URL(projectPath, window.location.href).href,
-    };
-  }
-
   if (Capacitor.isNativePlatform()) {
     const activeProject = await RemixCore.getActiveProject();
 

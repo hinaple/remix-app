@@ -19,6 +19,9 @@ import com.fainthit.remix.core.mqtt.RemixMqttStatus
 import com.fainthit.remix.core.actions.RemixNativeActionRegistry
 import com.fainthit.remix.core.nativeevents.RemixNativeEventConfigLoader
 import com.fainthit.remix.core.nativeevents.RemixNativeEventEngine
+import com.fainthit.remix.core.project.RemixProjectConfigRepository
+import com.fainthit.remix.core.project.RemixProjectConfiguration
+import com.fainthit.remix.core.vibration.RemixVibrationController
 import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
@@ -31,6 +34,7 @@ import androidx.core.view.ViewCompat
 @CapacitorPlugin(name = "RemixCore")
 class RemixCorePlugin : Plugin() {
     private lateinit var implementation: RemixCore
+    private lateinit var vibration: RemixVibrationController
     private var batteryReceiver: BroadcastReceiver? = null
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
     private var screenReceiver: BroadcastReceiver? = null
@@ -44,6 +48,7 @@ class RemixCorePlugin : Plugin() {
     private var keyboardStatusRequiredByNativeEvents = false
     private lateinit var nativeActions: RemixNativeActionRegistry
     private lateinit var nativeEventEngine: RemixNativeEventEngine
+    private var projectRuntimeMounted = false
     private val mqttListener = object : RemixMqttRuntime.Listener {
         override fun onStatus(status: RemixMqttStatus) {
             val payload = mqttStatusObject(status)
@@ -60,8 +65,10 @@ class RemixCorePlugin : Plugin() {
 
     override fun load() {
         implementation = RemixCore(activity)
+        vibration = RemixVibrationController(context)
         nativeActions = RemixNativeActionRegistry(
             core = implementation,
+            vibration = vibration,
             setCaptureBack = { captureBack = it },
             setCapturedKeys = { capturedKeys = it },
             onScreenChanged = {
@@ -110,6 +117,7 @@ class RemixCorePlugin : Plugin() {
     @PluginMethod
     fun setProjectRuntimeState(call: PluginCall) {
         val mounted = call.getBoolean("mounted", false) == true
+        projectRuntimeMounted = mounted
         if (mounted) reloadNativeEventConfig()
         nativeEventEngine.setProjectMounted(mounted)
         syncNativeEventSources(mounted)
@@ -321,6 +329,51 @@ class RemixCorePlugin : Plugin() {
     }
 
     @PluginMethod
+    fun getActiveProjectConfiguration(call: PluginCall) {
+        try {
+            call.resolve(projectConfigurationObject(
+                RemixProjectConfigRepository.loadActiveConfiguration(context),
+            ))
+        } catch (error: Exception) {
+            call.reject("Failed to load active project configuration", error)
+        }
+    }
+
+    @PluginMethod
+    fun setActiveProjectConstants(call: PluginCall) {
+        val projectId = call.getString("projectId")
+        val revision = call.getInt("revision")
+        val overrideValues = call.getObject("overrides")
+        if (projectId.isNullOrEmpty() || revision == null || overrideValues == null) {
+            call.reject("Project ID, revision, and overrides are required")
+            return
+        }
+
+        try {
+            val overrides = linkedMapOf<String, String>()
+            val ids = overrideValues.keys()
+            while (ids.hasNext()) {
+                val id = ids.next()
+                val value = overrideValues.opt(id)
+                require(value is String) { "Project constant $id must be a string" }
+                overrides[id] = value
+            }
+            val configuration = RemixProjectConfigRepository.saveActiveConstants(
+                context,
+                projectId,
+                revision,
+                overrides,
+            )
+            RemixMqttRuntime.reload(context)
+            reloadNativeEventConfig()
+            syncNativeEventSources(projectRuntimeMounted)
+            call.resolve(projectConfigurationObject(configuration))
+        } catch (error: Exception) {
+            call.reject("Failed to save active project constants", error)
+        }
+    }
+
+    @PluginMethod
     fun consumeLaunchProjectInstall(call: PluginCall) {
         val intent = activity.intent
         val path = launchProjectInstallPath(intent)
@@ -414,6 +467,7 @@ class RemixCorePlugin : Plugin() {
     }
 
     override fun handleOnDestroy() {
+        vibration.close()
         nativeEventEngine.close()
         stopBatteryStatusUpdatesSilently()
         stopNetworkStatusUpdatesSilently()
@@ -557,6 +611,27 @@ class RemixCorePlugin : Plugin() {
             put("installed", project.installed)
             project.directory?.let { put("directory", it) }
             project.url?.let { put("url", it) }
+        }
+    }
+
+    private fun projectConfigurationObject(configuration: RemixProjectConfiguration): JSObject {
+        return JSObject().apply {
+            put("status", configuration.status)
+            put("project", configuration.project)
+            put("projectId", configuration.projectId)
+            put("revision", configuration.revision)
+            put("missing", JSArray(configuration.missing))
+            put("constants", JSArray(configuration.constants.map { constant ->
+                JSObject().apply {
+                    put("id", constant.id)
+                    put("required", constant.required)
+                    put("hasDefault", constant.hasDefault)
+                    constant.defaultValue?.let { put("default", it) }
+                    put("hasOverride", constant.hasOverride)
+                    constant.value?.let { put("value", it) }
+                }
+            }))
+            configuration.manifest?.let { put("manifest", it) }
         }
     }
 

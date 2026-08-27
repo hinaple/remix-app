@@ -125,6 +125,7 @@ See [RemixAppContext](docs/reference/context.md) and [Project lifecycle](docs/co
 - [Developer documentation](docs/README.md)
 - [Architecture](docs/concepts/architecture.md)
 - [Project configuration](docs/reference/configuration.md)
+- [Constants](docs/reference/constants.md)
 - [CLI reference](docs/reference/cli.md)
 - [Events and status](docs/reference/events.md)
 - [MQTT](docs/reference/mqtt.md)

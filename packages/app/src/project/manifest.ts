@@ -1,22 +1,35 @@
 import {
+  RemixCore,
+  type RemixProjectConfigurationReady,
+  type RemixProjectConfigurationRequired,
+} from "@remixapp/core";
+import {
   REMIX_MIN_RUNTIME_API_VERSION,
   REMIX_PROJECT_FORMAT_VERSION,
   REMIX_RUNTIME_API_VERSION,
   type RemixProjectManifest,
 } from "@remixapp/sdk";
 
-export async function loadManifest(
-  baseUrl: string,
-): Promise<RemixProjectManifest> {
-  const response = await fetch(new URL("project.json", baseUrl));
-
-  if (!response.ok) {
-    throw new Error(
-      `Failed to load project.json: ${response.status} ${response.statusText}`,
-    );
+export class ProjectConfigurationRequiredError extends Error {
+  constructor(
+    readonly configuration: RemixProjectConfigurationRequired,
+  ) {
+    super(`Required project constants are missing: ${configuration.missing.join(", ")}`);
+    this.name = "ProjectConfigurationRequiredError";
   }
+}
 
-  const value: unknown = await response.json();
+export interface LoadedProjectManifest {
+  manifest: RemixProjectManifest;
+  configuration: RemixProjectConfigurationReady;
+}
+
+export async function loadManifest(): Promise<LoadedProjectManifest> {
+  const configuration = await RemixCore.getActiveProjectConfiguration();
+  if (configuration.status === "needsConfiguration") {
+    throw new ProjectConfigurationRequiredError(configuration);
+  }
+  const value = configuration.manifest;
 
   if (!isRecord(value) || !hasManifestShape(value)) {
     throw new Error(
@@ -37,11 +50,12 @@ export async function loadManifest(
     "runtime API",
   );
 
-  return {
+  const manifest = {
     ...value,
     formatVersion,
     runtimeApiVersion,
   } as unknown as RemixProjectManifest;
+  return { manifest, configuration };
 }
 
 function hasManifestShape(value: Record<string, unknown>): boolean {

@@ -4,9 +4,13 @@
 
 ## 개발 환경
 
-- Node.js 20 이상
-- pnpm 10.13.1
-- Android 작업 시 Android SDK, platform-tools, JDK와 Gradle을 실행할 수 있는 Windows 환경
+| 항목         | 요구 사항                                   | CI / Release 기준 |
+| ------------ | ------------------------------------------- | ----------------- |
+| Node.js      | 20 이상                                     | 22 이상           |
+| pnpm         | 10.13.1                                     | 10.13.1           |
+| 운영체제     | 제한 없음                                   | Windows           |
+| Android 도구 | Android SDK, platform-tools                 | compile SDK 36    |
+| JDK          | Android Gradle Wrapper를 실행할 수 있는 JDK | Temurin JDK 21    |
 
 저장소는 pnpm workspace이며 root에서 다음 명령으로 설치합니다.
 
@@ -16,17 +20,17 @@ pnpm install
 
 ## 모노레포 구조
 
-| 경로 | 책임 |
-| --- | --- |
-| `packages/app` | Android Host의 WebView UI, project loader와 Capacitor app |
-| `packages/core` | Capacitor plugin 정의와 Android native 구현 |
-| `packages/sdk` | 프로젝트에 공개되는 config, context, event와 action 계약 |
-| `packages/runtime` | Host와 CLI 개발 runtime이 공유하는 내부 subscription 및 status 도구 |
-| `packages/cli` | `dev`, `build`, `deploy` 구현과 Android 도구 |
-| `packages/create-remixapp` | `npm create @remixapp` 생성기와 기본 template |
-| `projects/example` | 공개 API와 Android 동작을 함께 확인하는 예제 프로젝트 |
-| `scripts` | Android 개발, 설치와 release 검증 자동화 |
-| `docs/internals` | 저장소 유지보수 및 release 문서 |
+| 경로                       | 설명                                                                |
+| -------------------------- | ------------------------------------------------------------------- |
+| `packages/app`             | Android Host의 WebView UI, project loader와 Capacitor app           |
+| `packages/core`            | Capacitor plugin 정의와 Android native 구현                         |
+| `packages/sdk`             | 프로젝트에 공개되는 config, context, event와 action 계약            |
+| `packages/runtime`         | Host와 CLI 개발 runtime이 공유하는 내부 subscription 및 status 도구 |
+| `packages/cli`             | `dev`, `build`, `deploy` 구현과 Android 도구                        |
+| `packages/create-remixapp` | `npm create @remixapp` 생성기와 기본 template                       |
+| `projects`                 | 공개 API, config와 Android 동작을 확인하는 예제 프로젝트 모음       |
+| `scripts`                  | Android 개발, 설치와 release 검증 자동화                            |
+| `docs/internals`           | 저장소 유지보수 및 release 문서                                     |
 
 의존성 경계의 핵심은 다음과 같습니다.
 
@@ -114,7 +118,7 @@ pnpm android:dev
 - Android Host의 context 생성 코드
 - CLI browser 개발 runtime
 - config validation과 manifest 생성
-- `projects/example`
+- `projects`의 관련 예제 프로젝트
 - project/runtime API 호환성 버전 변경 필요 여부
 
 API를 추가했는데 브라우저 개발 Host에 구현하지 않으면 프로젝트가 browser dev에서는 동작하지 않고 Android에서만 동작하는 불일치가 생깁니다.
@@ -127,7 +131,7 @@ config 필드를 추가하거나 변경할 때는 최소한 다음 경로가 일
 2. CLI validation 및 normalization
 3. `RemixProjectManifest` built type
 4. Host manifest load와 policy 적용
-5. create template 및 example
+5. create template 및 `projects`의 관련 예제 프로젝트
 6. `formatVersion` 또는 `runtimeApiVersion` 변경 필요 여부
 
 source config 전용 값과 `project.json` runtime 값을 구분하세요. Vite config처럼 build에만 필요한 값은 manifest에 넣지 않습니다.

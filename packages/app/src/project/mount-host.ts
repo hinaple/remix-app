@@ -9,7 +9,7 @@ export function createProjectMountHost(
   const shadowRoot =
     hostElement.shadowRoot ?? hostElement.attachShadow({ mode: "open" });
   const baseStyle = document.createElement("style");
-  const mountContainer = document.createElement("section");
+  const mountContainer = document.createElement("div");
 
   baseStyle.textContent = `
     :host {

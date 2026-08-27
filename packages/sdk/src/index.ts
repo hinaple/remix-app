@@ -13,6 +13,7 @@ export type {
 export { remixActionDefinitions, normalizeRemixActionCall } from "./actions.js";
 
 export type {
+  RemixNativeEventActivityState,
   RemixNativeEventMatcher,
   RemixNativeEventPrimitive,
   RemixNativeEventProjectRule,
@@ -23,6 +24,8 @@ export type {
 } from "./native-events.js";
 
 export type {
+  RemixConstantDefinition,
+  RemixConstantDefinitions,
   RemixConfig,
   RemixKeyboardAdjust,
   RemixKeyboardPolicy,
@@ -39,6 +42,7 @@ export type {
   RemixAppContext,
   RemixAppMount,
   RemixAppUnmount,
+  RemixConstantsContext,
 } from "./context";
 
 export type {
@@ -53,6 +57,9 @@ export type {
   RemixScreenContext,
   RemixScreenStatus,
   RemixVibrationContext,
+  RemixVibrationEffect,
+  RemixVibrationPreset,
+  RemixVibrationSegment,
 } from "./device";
 
 export type {
