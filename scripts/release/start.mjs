@@ -201,18 +201,19 @@ function publishRelease({ baseCommit, plan, releaseBranch, releaseCommit }) {
 }
 
 function readChangesetPlan() {
-  const temporaryDirectory = fs.mkdtempSync(
-    path.join(os.tmpdir(), "remixapp-plan-"),
-  );
-  const outputFile = path.join(temporaryDirectory, "status.json");
+  const outputFile = path.join(root, ".changeset", ".release-status.json");
 
   try {
-    runPnpm(["exec", "changeset", "status", `--output=${outputFile}`], {
-      capture: true,
-    });
+    runPnpm([
+      "exec",
+      "changeset",
+      "status",
+      "--output=.changeset/.release-status.json",
+    ]);
+
     return readJson(outputFile);
   } finally {
-    fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+    fs.rmSync(outputFile, { force: true });
   }
 }
 
