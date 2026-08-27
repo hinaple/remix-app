@@ -12,8 +12,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
-    "@remixapp/cli": "^0.3.0",
-    "@remixapp/sdk": "^0.3.0",
+    "@remixapp/cli": "^0.3.1",
+    "@remixapp/sdk": "^0.3.1",
     "typescript": "^5.8.3",
     "vite": "^7.0.0"
   }

@@ -1,6 +1,6 @@
 {
   "name": "@remixapp/sdk",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "TypeScript SDK and project contracts for remixApp",
   "license": "Apache-2.0",
   "type": "module",

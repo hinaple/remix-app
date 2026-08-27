@@ -1,5 +1,14 @@
 # @remixapp/app
 
+## 0.3.1
+
+### Patch Changes
+
+- 0c9fe42: 릴리즈 파이프라인 개선
+  - @remixapp/core@0.3.1
+  - @remixapp/runtime@0.3.1
+  - @remixapp/sdk@0.3.1
+
 ## 0.3.0
 
 ### Minor Changes
