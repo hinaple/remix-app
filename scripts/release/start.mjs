@@ -136,11 +136,10 @@ function prepareRelease({ baseCommit, plan }) {
     return commit;
   } finally {
     if (worktreeAdded) {
-      const removal = run(
-        "git",
-        ["worktree", "remove", "--force", checkout],
-        { allowFailure: true, capture: true },
-      );
+      const removal = run("git", ["worktree", "remove", "--force", checkout], {
+        allowFailure: true,
+        capture: true,
+      });
       if (removal.status !== 0) {
         warn(`Could not remove temporary worktree: ${checkout}`);
       }
@@ -183,7 +182,6 @@ function publishRelease({ baseCommit, plan, releaseBranch, releaseCommit }) {
     commit: releaseCommit,
     version: plan.nextVersion,
   });
-  console.log(`Release PR: ${pullRequest.url}`);
 
   if (!autoMerge) {
     console.log("Merge the release PR after CI passes.");
@@ -191,10 +189,15 @@ function publishRelease({ baseCommit, plan, releaseBranch, releaseCommit }) {
   }
 
   if (enableAutoMerge(pullRequest.url)) {
-    console.log("Auto-merge is enabled. Publishing starts after the PR merges.");
+    console.log(
+      "Auto-merge is enabled. Publishing starts after the PR merges.",
+    );
   } else {
-    warn(`Could not enable auto-merge. Merge the PR manually: ${pullRequest.url}`);
+    warn(
+      `Could not enable auto-merge. Merge the PR manually: ${pullRequest.url}`,
+    );
   }
+  console.log(`\nRelease PR: ${pullRequest.url}`);
 }
 
 function readChangesetPlan() {
@@ -216,7 +219,9 @@ function readChangesetPlan() {
 function resolvePlan(status) {
   const releases = status.releases.filter((release) => release.type !== "none");
   if (status.changesets.length === 0 || releases.length === 0) {
-    fail("No pending changesets were found. Create one first with: pnpm changeset");
+    fail(
+      "No pending changesets were found. Create one first with: pnpm changeset",
+    );
   }
 
   const versions = new Set(releases.map((release) => release.newVersion));
@@ -248,7 +253,9 @@ function printPlan(plan) {
   );
   console.log("\nRelease notes:");
   for (const changeset of plan.changesets) {
-    const types = [...new Set(changeset.releases.map((release) => release.type))];
+    const types = [
+      ...new Set(changeset.releases.map((release) => release.type)),
+    ];
     console.log(`- [${types.join(", ")}] ${changeset.summary}`);
   }
 }
@@ -261,7 +268,9 @@ function assertExpectedReleaseChanges(cwd) {
 
   const unexpected = changedPaths.filter((file) => !isReleaseFile(file));
   if (unexpected.length > 0) {
-    fail(`Release versioning changed unexpected files:\n${unexpected.join("\n")}`);
+    fail(
+      `Release versioning changed unexpected files:\n${unexpected.join("\n")}`,
+    );
   }
   return changedPaths;
 }
@@ -333,9 +342,14 @@ async function confirm(version) {
     fail("Interactive confirmation is unavailable. Re-run with --yes.");
   }
 
-  const prompt = createInterface({ input: process.stdin, output: process.stdout });
+  const prompt = createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
   try {
-    const answer = await prompt.question(`\nStart the ${version} release? [y/N] `);
+    const answer = await prompt.question(
+      `\nStart the ${version} release? [y/N] `,
+    );
     if (!/^(?:y|yes)$/i.test(answer.trim())) fail("Release cancelled.");
   } finally {
     prompt.close();
@@ -343,7 +357,9 @@ async function confirm(version) {
 }
 
 function assertSupportedOptions() {
-  const unknown = [...options].filter((option) => !supportedOptions.has(option));
+  const unknown = [...options].filter(
+    (option) => !supportedOptions.has(option),
+  );
   if (unknown.length > 0) fail(`Unknown option: ${unknown.join(", ")}`);
 }
 
