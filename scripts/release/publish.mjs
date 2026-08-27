@@ -17,7 +17,7 @@ try {
   if (options.includes("--check")) {
     console.log("Release commit is ready for publishing.");
   } else {
-    run(node, ["scripts/release/check.mjs --skip-android"]);
+    run(node, ["scripts/release/check.mjs", "--skip-android"]);
     run("git", ["diff", "--exit-code"]);
     run("git", ["diff", "--cached", "--exit-code"]);
     runPnpm(["exec", "changeset", "publish"]);
