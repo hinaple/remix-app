@@ -11,10 +11,10 @@ export function clampUnit(value: number): number {
 }
 
 export function setBrowserBrightness(brightness: number): void {
-  document.documentElement.style.setProperty(
-    "--remix-dev-brightness",
-    String(clampUnit(brightness)),
-  );
+  // document.documentElement.style.setProperty(
+  //   "--remix-dev-brightness",
+  //   String(clampUnit(brightness)),
+  // );
 }
 
 export async function setBrowserOrientation(

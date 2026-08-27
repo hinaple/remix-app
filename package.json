@@ -10,6 +10,9 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "dev:app": "pnpm --filter @remixapp/app dev",
     "dev:example": "pnpm --filter remixapp-example dev",
+    "dev:cli": "pnpm --filter @remixapp/cli exec tsup --watch",
+    "dev:sdk": "pnpm --filter @remixapp/sdk exec tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "dev:linked": "concurrently --kill-others-on-fail --names CLI,SDK \"pnpm run dev:cli\" \"pnpm run dev:sdk\"",
     "build:app": "pnpm --filter @remixapp/app build",
     "build:cli": "pnpm --filter @remixapp/cli build",
     "build:create": "pnpm --filter @remixapp/create build",
@@ -36,6 +39,7 @@
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.1",
+    "concurrently": "^10.0.5",
     "typescript": "^5.8.3"
   },
   "pnpm": {
