@@ -1,8 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { readJson, root } from "./utils.mjs";
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const mode = process.argv[2] ?? "check";
 const packageFiles = [
   ["@remixapp/app", "packages/app/package.json"],
@@ -19,7 +18,7 @@ const templatePackageFile = resolve(
 );
 
 if (mode !== "check" && mode !== "sync") {
-  fail("Usage: node scripts/release-versions.mjs <check|sync>");
+  fail("Usage: node scripts/release/versions.mjs <check|sync>");
 }
 
 const packages = packageFiles.map(([expectedName, relativePath]) => {
@@ -130,7 +129,9 @@ function syncAndroidVersion(version) {
 function checkRootVersion(version) {
   const rootPackage = readJson(resolve("package.json"));
   if (rootPackage.version !== version) {
-    fail(`Root package version must be ${version}, found ${String(rootPackage.version)}`);
+    fail(
+      `Root package version must be ${version}, found ${String(rootPackage.version)}`,
+    );
   }
 }
 
@@ -144,7 +145,9 @@ function checkPublicInternalDependencies(version) {
   ]) {
     const actual = cli.value[field]?.[name];
     if (actual !== version) {
-      fail(`@remixapp/cli ${field}.${name} must be ${version}, found ${String(actual)}`);
+      fail(
+        `@remixapp/cli ${field}.${name} must be ${version}, found ${String(actual)}`,
+      );
     }
   }
 }
@@ -155,7 +158,9 @@ function checkTemplateDependencies(version) {
     const expected = `^${version}`;
     const actual = template.devDependencies?.[name];
     if (actual !== expected) {
-      fail(`Template dependency ${name} must be ${expected}, found ${String(actual)}`);
+      fail(
+        `Template dependency ${name} must be ${expected}, found ${String(actual)}`,
+      );
     }
   }
 }
@@ -164,7 +169,9 @@ function checkSdkVersionConstant(version) {
   const source = fs.readFileSync(sdkVersionFile, "utf8");
   const match = source.match(/export const REMIX_TOOLCHAIN_VERSION = "([^"]+)";/);
   if (match?.[1] !== version) {
-    fail(`REMIX_TOOLCHAIN_VERSION must be ${version}, found ${match?.[1] ?? "missing"}`);
+    fail(
+      `REMIX_TOOLCHAIN_VERSION must be ${version}, found ${match?.[1] ?? "missing"}`,
+    );
   }
 }
 
@@ -190,13 +197,11 @@ function readAndroidVersion() {
   const name = entries.REMIX_VERSION_NAME;
   const code = Number(entries.REMIX_VERSION_CODE);
   if (!isSemanticVersion(name) || !Number.isInteger(code) || code < 1) {
-    fail("Android version.properties must contain a SemVer name and positive integer code");
+    fail(
+      "Android version.properties must contain a SemVer name and positive integer code",
+    );
   }
   return { name, code };
-}
-
-function readJson(file) {
-  return JSON.parse(fs.readFileSync(file, "utf8"));
 }
 
 function writeJson(file, value) {

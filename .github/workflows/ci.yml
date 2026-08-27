@@ -2,9 +2,6 @@ name: CI
 
 on:
   pull_request:
-  push:
-    branches:
-      - main
 
 permissions:
   contents: read
@@ -37,4 +34,4 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Validate release readiness
-        run: pnpm release:check
+        run: node scripts/release/check.mjs

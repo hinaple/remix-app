@@ -30,12 +30,9 @@
     "android:update": "pnpm run build:app & pnpm cap:sync & pnpm run android:build & pnpm run android:install",
     "changeset": "changeset",
     "changeset:status": "changeset status",
-    "release:sync": "node scripts/release-versions.mjs sync",
-    "release:pack": "node scripts/release-pack.mjs",
-    "release:manifests": "node scripts/verify-publish-manifests.mjs",
-    "release:check": "node scripts/release-check.mjs",
-    "release:version": "changeset version && node scripts/release-versions.mjs sync",
-    "release:publish": "pnpm release:check && changeset publish"
+    "release:check": "node scripts/release/check.mjs",
+    "release:start": "node scripts/release/start.mjs",
+    "release:sync": "node scripts/release/versions.mjs sync"
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.1",

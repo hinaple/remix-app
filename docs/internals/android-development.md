@@ -6,14 +6,14 @@
 
 Android Host는 다음 workspace를 함께 사용합니다.
 
-| 위치 | 책임 |
-| --- | --- |
-| `packages/app` | Capacitor web app, project loader, Host UI |
-| `packages/app/android` | Android application project |
-| `packages/core` | Capacitor plugin TypeScript 계약과 web fallback |
-| `packages/core/android` | Kotlin native bridge, foreground service, MQTT, native event engine |
-| `scripts/android-dev.mjs` | live-reload build와 기기 실행 자동화 |
-| `scripts/install-android-app.mjs` | debug APK 설치와 실행 |
+| 위치                              | 책임                                                                |
+| --------------------------------- | ------------------------------------------------------------------- |
+| `packages/app`                    | Capacitor web app, project loader, Host UI                          |
+| `packages/app/android`            | Android application project                                         |
+| `packages/core`                   | Capacitor plugin TypeScript 계약과 web fallback                     |
+| `packages/core/android`           | Kotlin native bridge, foreground service, MQTT, native event engine |
+| `scripts/android-dev.mjs`         | live-reload build와 기기 실행 자동화                                |
+| `scripts/install-android-app.mjs` | debug APK 설치와 실행                                               |
 
 Android application ID와 main Activity는 다음과 같습니다.
 
@@ -121,7 +121,7 @@ live-reload build는 `http://127.0.0.1:5173`을 WebView server URL로 사용하�
 
 ## WebView 검사
 
-debug 또는 live-reload Host를 실행한 뒤 Chrome에서 다음 주소를 엽니다.
+Host를 실행한 뒤 Chrome에서 다음 주소를 엽니다.
 
 ```text
 chrome://inspect/#devices
@@ -135,7 +135,7 @@ chrome://inspect/#devices
 - browser storage와 DOM
 - Host/project lifecycle log
 
-release build는 일반적으로 WebView debugging 대상이 아니므로 production 문제를 debug artifact에서 재현하는 절차가 필요합니다.
+이 기능은 production / development 등 환경과 관계 없이 항상 동작합니다.
 
 ## logcat
 
@@ -180,6 +180,10 @@ Host는 다음 Device Admin component를 선언합니다.
 com.fainthit.remix/.RemixDeviceAdminReceiver
 ```
 
+Android의 fully managed device provisioning에서는 `RemixProvisioningActivity`가 provisioning mode 요청과 admin policy compliance 단계를 처리합니다. Host가 Device Owner이면 policy compliance 단계와 앱 시작 시 merged manifest에 선언된 dangerous runtime permission을 확인하고 Device Policy Manager로 자동 승인합니다. Device Owner가 아니면 자동 승인을 시도하지 않습니다.
+
+권한을 추가하거나 변경할 때는 app manifest뿐 아니라 plugin을 포함한 merged manifest를 기준으로 동작한다는 점을 고려합니다. 자동 승인이 실패하면 `RemixPermissions` tag의 logcat을 확인합니다.
+
 개발 기기가 아직 provision되지 않았고 계정이나 기존 owner가 없는 상태라면 Android의 `dpm set-device-owner`를 사용한 개발 설정을 검토할 수 있습니다.
 
 ```sh
@@ -190,11 +194,11 @@ adb shell dpm set-device-owner com.fainthit.remix/.RemixDeviceAdminReceiver
 
 ## build 종류 구분
 
-| build | 용도 | 특징 |
-| --- | --- | --- |
-| debug | native/Host 통합 개발 | packaged web asset, debug signing |
-| liveReload | 빠른 WebView 개발 | Vite URL, ADB reverse, cleartext 허용 |
-| release | 배포 후보 | production signing 설정과 keystore가 별도로 필요 |
+| build      | 용도                  | 특징                                             |
+| ---------- | --------------------- | ------------------------------------------------ |
+| debug      | native/Host 통합 개발 | packaged web asset, debug signing                |
+| liveReload | 빠른 WebView 개발     | Vite URL, ADB reverse, cleartext 허용            |
+| release    | 배포 후보             | production signing 설정과 keystore가 별도로 필요 |
 
 release workflow가 만드는 debug APK artifact를 현장 배포용 signed APK로 취급하지 마세요. 공식 version 및 release 절차는 [릴리스](releasing.md)를 따릅니다.
 

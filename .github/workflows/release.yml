@@ -41,14 +41,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Create release PR or publish packages
+      - name: Require a versioned release commit
+        run: node scripts/release/publish.mjs --check
+
+      - name: Publish packages and create releases
         id: changesets
         uses: changesets/action@v1
         with:
-          title: Release remixApp packages
-          commit: Release remixApp packages
-          version: pnpm release:version
-          publish: pnpm release:publish
+          publish: node scripts/release/publish.mjs
         env:
           HOME: ${{ runner.temp }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
