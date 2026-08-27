@@ -1,6 +1,6 @@
 {
   "name": "@remixapp/cli",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Build, develop, and deploy remixApp projects",
   "license": "Apache-2.0",
   "type": "module",
@@ -45,12 +45,12 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@remixapp/sdk": "0.3.0",
+    "@remixapp/sdk": "0.3.1",
     "archiver": "^7.0.1",
     "vite": "^7.0.0"
   },
   "devDependencies": {
-    "@remixapp/runtime": "0.3.0",
+    "@remixapp/runtime": "0.3.1",
     "@types/archiver": "^6.0.3",
     "@types/node": "^24.0.0",
     "tsup": "^8.5.1"

@@ -1,6 +1,6 @@
 {
   "name": "@remixapp/core",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Native device bridge for the remixApp Host",
   "license": "Apache-2.0",
   "type": "module",

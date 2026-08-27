@@ -1,5 +1,11 @@
 # @remixapp/runtime
 
+## 0.3.1
+
+### Patch Changes
+
+- @remixapp/sdk@0.3.1
+
 ## 0.3.0
 
 ### Patch Changes

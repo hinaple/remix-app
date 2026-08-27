@@ -1,5 +1,5 @@
 /** Version of the lockstep remixApp SDK/CLI/Host toolchain release. */
-export const REMIX_TOOLCHAIN_VERSION = "0.3.0";
+export const REMIX_TOOLCHAIN_VERSION = "0.3.1";
 
 /** Version of the `.remixprj` archive and `project.json` layout. */
 export const REMIX_PROJECT_FORMAT_VERSION = 1;

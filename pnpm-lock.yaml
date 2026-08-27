@@ -54,7 +54,7 @@ importers:
   packages/cli:
     dependencies:
       '@remixapp/sdk':
-        specifier: 0.3.0
+        specifier: 0.3.1
         version: link:../sdk
       archiver:
         specifier: ^7.0.1
@@ -64,7 +64,7 @@ importers:
         version: 7.3.6(@types/node@24.13.2)
     devDependencies:
       '@remixapp/runtime':
-        specifier: 0.3.0
+        specifier: 0.3.1
         version: link:../runtime
       '@types/archiver':
         specifier: ^6.0.3
